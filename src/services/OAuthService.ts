@@ -126,7 +126,8 @@ export class OAuthService {
             tokenData.refresh_token,
             Date.now() + (tokenData.expires_in * 1000),
             user.login,        // username for API calls
-            user.display_name  // display name for UI
+            user.display_name, // display name for UI
+            EMBEDDED_CREDENTIALS.twitch.clientId // clientId
           );
 
           return true;
@@ -173,6 +174,7 @@ export class OAuthService {
       authUrl.searchParams.set('code_challenge', codeChallenge);
       authUrl.searchParams.set('code_challenge_method', 'S256');
       authUrl.searchParams.set('access_type', 'offline'); // Request refresh token
+      authUrl.searchParams.set('prompt', 'consent'); // Force consent screen to get refresh token
 
       // Open browser to auth URL
       shell.openExternal(authUrl.toString());
@@ -199,22 +201,39 @@ export class OAuthService {
 
   private async exchangeYouTubeCode(code: string, codeVerifier: string, redirectUri: string): Promise<boolean> {
     try {
+      const requestBody = new URLSearchParams({
+        client_id: EMBEDDED_CREDENTIALS.youtube.clientId,
+        code: code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier, // PKCE verification
+      });
+
+      console.log('YouTube token exchange request:');
+      console.log('Endpoint:', OAUTH_CONFIG.endpoints.youtube.token);
+      console.log('Client ID:', EMBEDDED_CREDENTIALS.youtube.clientId);
+      console.log('Redirect URI:', redirectUri);
+      console.log('Code length:', code.length);
+      console.log('Code verifier length:', codeVerifier.length);
+
       const tokenResponse = await fetch(OAUTH_CONFIG.endpoints.youtube.token, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          client_id: EMBEDDED_CREDENTIALS.youtube.clientId,
-          code: code,
-          grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
-          code_verifier: codeVerifier, // PKCE verification
-        }),
+        body: requestBody,
       });
 
       if (!tokenResponse.ok) {
-        throw new Error(`Token exchange failed: ${tokenResponse.statusText}`);
+        // Get detailed error response
+        let errorDetails = '';
+        try {
+          const errorData = await tokenResponse.json();
+          errorDetails = JSON.stringify(errorData);
+        } catch {
+          errorDetails = await tokenResponse.text();
+        }
+        throw new Error(`Token exchange failed: ${tokenResponse.status} ${tokenResponse.statusText} - ${errorDetails}`);
       }
 
       const tokenData = await tokenResponse.json();
@@ -238,7 +257,8 @@ export class OAuthService {
         tokenData.access_token,
         tokenData.refresh_token,
         Date.now() + (tokenData.expires_in * 1000),
-        channel.snippet.title  // display name for UI
+        channel.snippet.title,  // display name for UI
+        EMBEDDED_CREDENTIALS.youtube.clientId
       );
 
       return true;
@@ -463,7 +483,8 @@ export class OAuthService {
         tokenData.refresh_token || credentials.twitch.refreshToken,
         Date.now() + (tokenData.expires_in * 1000),
         credentials.twitch.username,
-        credentials.twitch.displayName
+        credentials.twitch.displayName,
+        credentials.twitch.clientId
       );
 
       return true;
@@ -502,7 +523,8 @@ export class OAuthService {
         tokenData.access_token,
         tokenData.refresh_token || credentials.youtube.refreshToken,
         Date.now() + (tokenData.expires_in * 1000),
-        credentials.youtube.displayName
+        credentials.youtube.displayName,
+        credentials.youtube.clientId
       );
 
       return true;

@@ -1,14 +1,13 @@
 /**
  * Application Configuration
  * Desktop applications are "public clients" and should NOT store client secrets
- * 
+ *
  * Security Implementation by Platform:
  * - Twitch: Device Code Grant Flow (no client secret, OAuth 2.1 compliant)
- * - YouTube: Authorization Code + PKCE (no client secret, OAuth 2.1 compliant) 
+ * - YouTube: Authorization Code + PKCE (no client secret for Desktop App type, OAuth 2.1 compliant)
  * - Kick: Authorization Code + PKCE + client secret (required by Kick's API)
- * 
- * Note: Kick's OAuth implementation requires client_secret even with PKCE,
- * which is not ideal for desktop applications but mandatory for their API.
+ *
+ * Note: Only Kick requires client_secret. YouTube works with PKCE when configured as Desktop App.
  */
 
 export const EMBEDDED_CREDENTIALS = {
@@ -16,7 +15,7 @@ export const EMBEDDED_CREDENTIALS = {
     clientId: 'ofxxg2au9xh0xjyfinfziyf3cl7l80'
   },
   youtube: {
-    clientId: '207071834611-q3r7osrt8rdlp0rjhn90lq9516d47nki.apps.googleusercontent.com'
+    clientId: '207071834611-bqklv52vv4f1ofsh3t9e0k9geg513iqo.apps.googleusercontent.com',
   },
   kick: {
     clientId: '01JYHN2N63P09AZPE3WCHRYQXH',
@@ -33,7 +32,7 @@ export const OAUTH_CONFIG = {
     youtube: ['https://www.googleapis.com/auth/youtube.readonly'],
     kick: ['user:read'] // Required for user identification
   },
-  
+
   // OAuth 2.1 endpoints
   // Note: Twitch uses Device Code Grant Flow (no redirect URI needed)
   // YouTube and Kick use Authorization Code Flow with PKCE

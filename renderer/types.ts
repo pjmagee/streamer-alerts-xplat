@@ -77,6 +77,7 @@ export interface ElectronAPI {
   // Window methods
   closeWindow: () => Promise<void>;
   minimizeWindow: () => Promise<void>;
+  openExternal: (url: string) => Promise<void>;
   
   // Event listeners
   onStreamStatusUpdate: (callback: (data: any) => void) => void;

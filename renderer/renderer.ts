@@ -301,6 +301,18 @@ class StreamerAlertsRenderer {
       deleteBtn?.addEventListener('click', () => this.deleteAccount(account.id));
       toggleBtn?.addEventListener('click', () => this.toggleAccount(account.id));
     });
+
+    // Add event listeners for streamer links
+    const streamerLinks = document.querySelectorAll('.streamer-link');
+    streamerLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = (e.target as HTMLElement).getAttribute('data-url');
+        if (url) {
+          window.electronAPI.openExternal(url);
+        }
+      });
+    });
   }
 
   createAccountHTML(account: StreamerAccount): string {
@@ -308,14 +320,34 @@ class StreamerAlertsRenderer {
     const statusText = account.lastStatus === 'live' ? 'LIVE' : 'Offline';
     const enabledClass = account.enabled ? 'enabled' : 'disabled';
     const toggleText = account.enabled ? 'Disable' : 'Enable';
+    
+    // Build proper username display without redundant @
+    let usernameDisplay = account.username;
+    if (account.platform === 'youtube' && !usernameDisplay.startsWith('@')) {
+      // YouTube channels might need @ prefix if they don't already have it
+      usernameDisplay = `@${usernameDisplay}`;
+    } else if (account.platform === 'twitch' && !usernameDisplay.startsWith('@')) {
+      // Twitch usernames are displayed with @
+      usernameDisplay = `@${usernameDisplay}`;
+    }
+    // For Kick, just use the username as-is since they don't use @ prefix
+    if (account.platform === 'kick') {
+      usernameDisplay = account.username;
+    }
+    
+    // Generate the stream URL for clickable name
+    const streamUrl = this.getStreamUrl(account);
 
     return `
       <div class="account-item ${enabledClass}">
         <div class="account-info">
-          <h4>${account.displayName || account.username}</h4>
-          <p class="platform">${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}</p>
-          <p class="username">@${account.username}</p>
-          <span class="status ${statusClass}">${statusText}</span>
+          <div class="status-indicator status-${statusClass}"></div>
+          <div class="account-details">
+            <h4><a href="#" class="streamer-link" data-url="${streamUrl}">${account.displayName || account.username}</a></h4>
+            <p class="platform">${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}</p>
+            <p class="username">${usernameDisplay}</p>
+            <span class="status-badge status-${statusClass}">${statusText}</span>
+          </div>
         </div>
         <div class="account-actions">
           <button id="edit-${account.id}" class="btn btn-secondary btn-sm">Edit</button>
@@ -324,6 +356,21 @@ class StreamerAlertsRenderer {
         </div>
       </div>
     `;
+  }
+
+  private getStreamUrl(account: StreamerAccount): string {
+    switch (account.platform) {
+      case 'twitch':
+        return `https://twitch.tv/${account.username}`;
+      case 'youtube':
+        // If platformId is set, use it for channel URL, otherwise use username
+        const identifier = account.platformId || account.username;
+        return `https://youtube.com/${identifier}/live`;
+      case 'kick':
+        return `https://kick.com/${account.username}`;
+      default:
+        return '';
+    }
   }
 
   showAddAccountModal(): void {

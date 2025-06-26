@@ -25,7 +25,6 @@ export class ConfigService {
         apiCredentials: {
           twitch: {
             clientId: '',
-            // Note: clientSecret removed for security (desktop apps are public clients)
             accessToken: '',
             refreshToken: '',
             expiresAt: 0,
@@ -35,7 +34,6 @@ export class ConfigService {
           },
           youtube: {
             clientId: '',
-            // Note: clientSecret removed for security (desktop apps are public clients)
             accessToken: '',
             refreshToken: '',
             expiresAt: 0,
@@ -44,7 +42,6 @@ export class ConfigService {
           },
           kick: {
             clientId: '',
-            // Note: clientSecret removed for security (desktop apps are public clients, using PKCE)
             accessToken: '',
             refreshToken: '',
             expiresAt: 0,
@@ -55,8 +52,6 @@ export class ConfigService {
         }
       }
     });
-
-    // No migration needed during development
   }
 
   public getAccounts(): StreamerAccount[] {
@@ -120,7 +115,9 @@ export class ConfigService {
 
   public setWindowSettings(settings: { width: number; height: number }): void {
     this.store.set('windowSettings', settings);
-  } public getApiCredentials(): ApiCredentials {
+  } 
+  
+  public getApiCredentials(): ApiCredentials {
 
     const stored = this.store.get('apiCredentials', {
       twitch: {
@@ -133,6 +130,7 @@ export class ConfigService {
         displayName: ''
       },
       youtube: {
+        clientId: '',
         accessToken: '',
         refreshToken: '',
         expiresAt: 0,
@@ -157,10 +155,11 @@ export class ConfigService {
     this.store.set('apiCredentials', credentials);
   }  
   
-  public setTwitchOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, username?: string, displayName?: string): void {
+  public setTwitchOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, username?: string, displayName?: string, clientId?: string): void {
     const credentials = this.getApiCredentials();
+
     credentials.twitch = {
-      ...credentials.twitch,
+      clientId: clientId || credentials.twitch.clientId || '',
       accessToken,
       refreshToken,
       expiresAt,
@@ -180,23 +179,27 @@ export class ConfigService {
     this.setApiCredentials(credentials);
   }
 
-  public setYouTubeOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, displayName?: string): void {
+  public setYouTubeOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, displayName?: string, clientId?: string): void {
     const credentials = this.getApiCredentials();
+
     credentials.youtube = {
+      clientId: clientId || credentials.youtube.clientId || '',
       accessToken,
       refreshToken,
       expiresAt,
       isLoggedIn: true,
       displayName
     };
+    
+
     this.setApiCredentials(credentials);
   }
 
   public logoutTwitch(): void {
     const credentials = this.getApiCredentials();
+
     credentials.twitch = {
-      clientId: credentials.twitch.clientId || '', // Keep client credentials
-      // Note: clientSecret removed for security (desktop apps are public clients)
+      clientId: credentials.twitch.clientId || '',      
       accessToken: '',
       refreshToken: '',
       expiresAt: 0,
@@ -204,10 +207,14 @@ export class ConfigService {
       username: '',
       displayName: ''
     };
+
     this.setApiCredentials(credentials);
   }
+
   public setKickOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, username?: string, displayName?: string, clientId?: string): void {
+    
     const credentials = this.getApiCredentials();
+    
     credentials.kick = {
       clientId: clientId || credentials.kick.clientId || '',
       accessToken,
@@ -217,12 +224,15 @@ export class ConfigService {
       username,
       displayName
     };
+
     this.setApiCredentials(credentials);
   }
+
   public logoutKick(): void {
     const credentials = this.getApiCredentials();
+
     credentials.kick = {
-      clientId: credentials.kick.clientId || '', // Keep client ID
+      clientId: credentials.kick.clientId || '',
       accessToken: '',
       refreshToken: '',
       expiresAt: 0,
@@ -230,17 +240,23 @@ export class ConfigService {
       username: '',
       displayName: ''
     };
+
     this.setApiCredentials(credentials);
   }
+
   public logoutYouTube(): void {
+
     const credentials = this.getApiCredentials();
+
     credentials.youtube = {
+      clientId: credentials.youtube.clientId || '',
       accessToken: '',
       refreshToken: '',
       expiresAt: 0,
       isLoggedIn: false,
       displayName: ''
     };
+
     this.setApiCredentials(credentials);
   }
 
@@ -248,18 +264,9 @@ export class ConfigService {
     const credentials = this.getApiCredentials();
     credentials.twitch.clientId = clientId;
     this.setApiCredentials(credentials);
-  }
-
-  // Legacy methods for backward compatibility (will be removed)
-  public setTwitchCredentials(clientId: string, accessToken: string): void {
-    // This method is deprecated - OAuth login should be used instead
-    console.warn('setTwitchCredentials is deprecated - use OAuth login instead');
-  }
-
-  public setYouTubeCredentials(apiKey: string): void {
-    // This method is deprecated - OAuth login should be used instead
-    console.warn('setYouTubeCredentials is deprecated - use OAuth login instead');
-  }  public setKickCredentials(clientId?: string, accessToken?: string): void {
+  }  
+  
+  public setKickCredentials(clientId?: string, accessToken?: string): void {
     const credentials = this.getApiCredentials();
     credentials.kick = {
       ...credentials.kick,

@@ -63,6 +63,7 @@ class StreamerAlertsApp {
     ipcMain.handle('config:setCheckInterval', (_, interval) => this.configService.setCheckInterval(interval));    // API Credentials IPC handlers
     ipcMain.handle('config:getApiCredentials', () => this.configService.getApiCredentials());
     ipcMain.handle('config:setApiCredentials', (_, credentials) => this.configService.setApiCredentials(credentials));    // OAuth IPC handlers for all platforms
+   
     ipcMain.handle('oauth:authenticateTwitch', async () => {
       try {
         const success = await this.oauthService.loginTwitch();
@@ -139,15 +140,14 @@ class StreamerAlertsApp {
     });
 
     // Legacy API credential handlers (deprecated)
-    ipcMain.handle('config:setTwitchCredentials', (_, clientId, accessToken) => this.configService.setTwitchCredentials(clientId, accessToken));
-    ipcMain.handle('config:setYouTubeCredentials', (_, apiKey) => this.configService.setYouTubeCredentials(apiKey));    
-    ipcMain.handle('config:setKickCredentials', (_, clientId, accessToken) => 
-      this.configService.setKickCredentials(clientId, accessToken));
+    ipcMain.handle('config:setKickCredentials', (_, clientId, accessToken) => this.configService.setKickCredentials(clientId, accessToken));
 
     // Stream checking
     ipcMain.handle('stream:checkStatus', async (_, account) => {
       return await this.streamerService.checkMultipleStreamers([account]);
-    });    // Window management - hide instead of close to keep window available
+    });    
+    
+    // Window management - hide instead of close to keep window available
     ipcMain.handle('window:close', () => {
       if (this.mainWindow) {
         this.mainWindow.hide();
@@ -157,6 +157,11 @@ class StreamerAlertsApp {
       if (this.mainWindow) {
         this.mainWindow.minimize();
       }
+    });
+    
+    // Shell methods
+    ipcMain.handle('shell:openExternal', (_, url: string) => {
+      shell.openExternal(url);
     });
   }
   private createTray(): void {

@@ -1,13 +1,13 @@
+
 export interface StreamerAccount {
   id: string;
-  username: string;              // Twitch/Kick username or YouTube channel handle (@username)
+  username: string;
   platform: 'twitch' | 'youtube' | 'kick';
   displayName?: string;
   enabled: boolean;
   lastStatus?: 'live' | 'offline';
   lastChecked?: Date;
-  // Platform-specific identifiers
-  platformId?: string;           // YouTube channel ID, Twitch user ID, etc.
+  platformId?: string;
 }
 
 export interface StreamerStatus {
@@ -69,35 +69,33 @@ export interface AppConfig {
 }
 
 export interface ApiCredentials {
+
   twitch: {
     clientId: string;
-    // Note: clientSecret removed for security (desktop apps are public clients)
-    accessToken: string;           // User access token (required for all operations)
-    refreshToken?: string;         // Refresh token for token renewal
-    expiresAt?: number;            // Token expiration time
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: number;
     isLoggedIn: boolean;
-    username?: string;             // Authenticated user's Twitch username (for UI display only)
-    displayName?: string;          // Authenticated user's display name (for UI display only)
+    username?: string;
+    displayName?: string;
   };
+
   youtube: {
-    clientId?: string;             // Client ID for OAuth
-    // Note: clientSecret removed for security (desktop apps are public clients)
-    accessToken: string;           // User access token for API calls
-    refreshToken?: string;         // Refresh token for token renewal
-    expiresAt?: number;            // Token expiration time
+    clientId: string;
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: number;
     isLoggedIn: boolean;
-    displayName?: string;          // Authenticated user's channel name (for UI display only)
-    // Note: channelId/channelName removed - these belong to individual StreamerAccount records
-    // The authenticated user's channel info is not needed for monitoring other streamers
+    displayName?: string;
   };
+
   kick: {
-    clientId?: string;
-    // Note: clientSecret removed for security (desktop apps are public clients, using PKCE)
+    clientId: string;
     accessToken?: string;
     refreshToken?: string;
     expiresAt?: number;
     isLoggedIn: boolean;
-    username?: string;             // Authenticated user's Kick username (for UI display only)
-    displayName?: string;          // Authenticated user's display name (for UI display only)
+    username?: string;
+        displayName?: string;
   };
 }
