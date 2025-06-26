@@ -34,8 +34,9 @@ class StreamerAlertsApp {
   private setupApp(): void {
     // App name is already set at module load time
     
-    app.whenReady().then(() => {
+    app.whenReady().then(async () => {
       this.createTray();
+      await this.validateStoredTokens();
       this.startStreamingChecks();
     });
 
@@ -279,6 +280,9 @@ class StreamerAlertsApp {
 
     this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
+    // Open DevTools for debugging
+    this.mainWindow.webContents.openDevTools();
+
     this.mainWindow.once('ready-to-show', () => {
       this.mainWindow?.show();
     });
@@ -317,6 +321,14 @@ class StreamerAlertsApp {
     try {
       const accounts = this.configService.getAccounts();
       const statusUpdates = await this.streamerService.checkMultipleStreamers(accounts);
+
+      // Update account statuses in config
+      for (const update of statusUpdates) {
+        this.configService.updateAccount(update.account.id, {
+          lastStatus: update.account.lastStatus,
+          lastChecked: update.account.lastChecked
+        });
+      }
 
       // Check if any streamers are live
       const hasLiveStreamers = statusUpdates.some((update: StreamerStatus) => update.isLive);
@@ -359,6 +371,44 @@ class StreamerAlertsApp {
     });
 
     notification.show();
+  }
+
+  private async validateStoredTokens(): Promise<void> {
+    console.log('Validating stored OAuth tokens on app startup...');
+    
+    try {
+      const credentials = this.configService.getApiCredentials();
+      
+      // Validate each platform's tokens
+      if (credentials.twitch.isLoggedIn) {
+        const twitchValid = await this.oauthService.validateAndRefreshToken('twitch');
+        if (!twitchValid) {
+          console.log('Twitch token validation failed - user will need to re-authenticate');
+        } else {
+          console.log('Twitch token validated successfully');
+        }
+      }
+      
+      if (credentials.youtube.isLoggedIn) {
+        const youtubeValid = await this.oauthService.validateAndRefreshToken('youtube');
+        if (!youtubeValid) {
+          console.log('YouTube token validation failed - user will need to re-authenticate');
+        } else {
+          console.log('YouTube token validated successfully');
+        }
+      }
+      
+      if (credentials.kick.isLoggedIn) {
+        const kickValid = await this.oauthService.validateAndRefreshToken('kick');
+        if (!kickValid) {
+          console.log('Kick token validation failed - user will need to re-authenticate');
+        } else {
+          console.log('Kick token validated successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error validating stored tokens:', error);
+    }
   }
 }
 

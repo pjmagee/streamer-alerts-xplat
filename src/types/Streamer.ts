@@ -17,7 +17,6 @@ export interface StreamerStatus {
   title?: string;
   game?: string;
   viewerCount?: number;
-  thumbnailUrl?: string;
   url: string;
   displayName: string;
   platform: string;
@@ -36,7 +35,6 @@ export interface TwitchStreamResponse {
     viewer_count: number;
     started_at: string;
     language: string;
-    thumbnail_url: string;
   }>;
 }
 

@@ -520,3 +520,38 @@ input:checked + .toggle-slider:before {
         margin: 10% auto;
     }
 }
+
+/* Notification styles */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 10000;
+    cursor: pointer;
+    max-width: 350px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: opacity 0.3s ease;
+}
+
+.notification.success {
+    background-color: #28a745;
+    border-left: 4px solid #1e7e34;
+}
+
+.notification.error {
+    background-color: #dc3545;
+    border-left: 4px solid #bd2130;
+}
+
+.notification.info {
+    background-color: #17a2b8;
+    border-left: 4px solid #117a8b;
+}
+
+.notification:hover {
+    opacity: 0.9;
+}

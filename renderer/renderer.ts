@@ -1,5 +1,14 @@
 import { StreamerAccount, ApiCredentials, AppSettings } from './types';
 
+interface StreamerStatus {
+  account: StreamerAccount;
+  isLive: boolean;
+  justWentLive: boolean;
+  url: string;
+  displayName: string;
+  platform: string;
+}
+
 class StreamerAlertsRenderer {
   private accounts: StreamerAccount[] = [];
   private addAccountModal: HTMLElement | null = null;
@@ -16,6 +25,11 @@ class StreamerAlertsRenderer {
     await this.loadSettings();
     await this.loadAccounts();
     await this.loadApiCredentials();
+    
+    // Listen for stream status updates from main process
+    window.electronAPI.onStreamStatusUpdate((statusUpdates) => {
+      this.handleStreamStatusUpdates(statusUpdates);
+    });
   }
 
   setupEventListeners(): void {
@@ -47,7 +61,7 @@ class StreamerAlertsRenderer {
     // Add Account Modal
     this.addAccountModal = document.getElementById('addAccountModal');
     const addAccountForm = document.getElementById('addAccountForm');
-    const cancelAddBtn = document.getElementById('cancelAddBtn');
+    const cancelAddBtn = document.getElementById('cancelBtn');
 
     addAccountForm?.addEventListener('submit', (e) => this.handleAddAccount(e));
     cancelAddBtn?.addEventListener('click', () => this.hideAddAccountModal());
@@ -55,7 +69,7 @@ class StreamerAlertsRenderer {
     // Edit Account Modal
     this.editAccountModal = document.getElementById('editAccountModal');
     const editAccountForm = document.getElementById('editAccountForm');
-    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const cancelEditBtn = document.getElementById('editCancelBtn');
 
     editAccountForm?.addEventListener('submit', (e) => this.handleEditAccount(e));
     cancelEditBtn?.addEventListener('click', () => this.hideEditAccountModal());
@@ -359,8 +373,8 @@ class StreamerAlertsRenderer {
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
     
-    const username = formData.get('username') as string;
-    const displayName = formData.get('displayName') as string;
+    const username = (formData.get('username') as string)?.trim();
+    const displayName = (formData.get('displayName') as string)?.trim();
     const platform = formData.get('platform') as 'twitch' | 'youtube' | 'kick';
 
     if (!username || !platform) {
@@ -370,8 +384,8 @@ class StreamerAlertsRenderer {
 
     try {
       await window.electronAPI.addAccount({
-        username: username.trim(),
-        displayName: displayName.trim() || undefined,
+        username: username,
+        displayName: displayName || undefined,
         platform,
         enabled: true
       });
@@ -393,8 +407,8 @@ class StreamerAlertsRenderer {
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
     
-    const username = formData.get('username') as string;
-    const displayName = formData.get('displayName') as string;
+    const username = (formData.get('username') as string)?.trim();
+    const displayName = (formData.get('displayName') as string)?.trim();
     const platform = formData.get('platform') as 'twitch' | 'youtube' | 'kick';
 
     if (!username || !platform) {
@@ -404,8 +418,8 @@ class StreamerAlertsRenderer {
 
     try {
       await window.electronAPI.updateAccount(this.currentEditingId, {
-        username: username.trim(),
-        displayName: displayName.trim() || undefined,
+        username: username,
+        displayName: displayName || undefined,
         platform
       });
 
@@ -447,6 +461,11 @@ class StreamerAlertsRenderer {
       console.error('Failed to toggle account:', error);
       this.showError('Failed to update streamer. Please try again.');
     }
+  }
+
+  handleStreamStatusUpdates(statusUpdates: StreamerStatus[]): void {
+    // Reload accounts to get updated statuses
+    this.loadAccounts();
   }
 
   showError(message: string): void {

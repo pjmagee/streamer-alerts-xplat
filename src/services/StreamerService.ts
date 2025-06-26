@@ -50,7 +50,6 @@ export class StreamerService {
     let title = '';
     let game = '';
     let viewerCount = 0;
-    let thumbnailUrl = '';
 
     switch (account.platform) {
       case 'twitch':
@@ -59,7 +58,6 @@ export class StreamerService {
         title = twitchData.title;
         game = twitchData.game;
         viewerCount = twitchData.viewerCount;
-        thumbnailUrl = twitchData.thumbnailUrl;
         break;
 
       case 'youtube':
@@ -95,14 +93,13 @@ export class StreamerService {
       title,
       game,
       viewerCount,
-      thumbnailUrl,
       url: this.getStreamUrl(account),
       displayName: account.displayName || account.username,
       platform: account.platform
     };
   }
 
-  private async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string; game: string; viewerCount: number; thumbnailUrl: string }> {
+  private async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string; game: string; viewerCount: number }> {
     const credentials = this.configService.getApiCredentials();
     
     // Check if user is logged in with Twitch
@@ -142,12 +139,11 @@ export class StreamerService {
           isLive: true,
           title: streamData.title,
           game: streamData.game_name,
-          viewerCount: streamData.viewer_count,
-          thumbnailUrl: streamData.thumbnail_url
+          viewerCount: streamData.viewer_count
         };
       }
 
-      return { isLive: false, title: '', game: '', viewerCount: 0, thumbnailUrl: '' };
+      return { isLive: false, title: '', game: '', viewerCount: 0 };
     } catch (error) {
       console.error('Error checking Twitch stream:', error);
       
@@ -160,7 +156,7 @@ export class StreamerService {
         throw new Error('Twitch authentication failed. Please re-authenticate with Twitch.');
       }
       
-      return { isLive: false, title: '', game: '', viewerCount: 0, thumbnailUrl: '' };
+      return { isLive: false, title: '', game: '', viewerCount: 0 };
     }
   }
 
