@@ -1,0 +1,78 @@
+{
+  "name": "streamer-alerts-xplat",
+  "version": "1.0.0",
+  "description": "Cross-platform streamer live notifications app",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc && npm run build:renderer",
+    "build:main": "tsc",
+    "build:renderer": "cd renderer && tsc",
+    "watch": "concurrently \"tsc --watch\" \"cd renderer && tsc --watch\"",
+    "watch:main": "tsc --watch",
+    "watch:renderer": "cd renderer && tsc --watch",
+    "start": "npm run build && npx electron .",
+    "dev": "npm run build && npx electron . --dev",
+    "pack": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --publish=never",
+    "validate-oauth": "npm run build && node dist/tests/OAuthService.test.js",
+    "cleanup-data": "node scripts/cleanup-data.js",
+    "cleanup-data-force": "node scripts/cleanup-data.js --force",
+    "test-oauth": "npm run build && node dist/tests/oauth-test-runner.js",
+    "test-oauth-twitch": "npm run build && node dist/tests/oauth-test-runner.js twitch",
+    "test-oauth-youtube": "npm run build && node dist/tests/oauth-test-runner.js youtube",
+    "test-oauth-kick": "npm run build && node dist/tests/oauth-test-runner.js kick",
+    "test-notification": "npx electron scripts/test-notification.js",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "electron",
+    "typescript",
+    "twitch",
+    "youtube",
+    "kick",
+    "streamer",
+    "notifications"
+  ],
+  "author": "Patrick Magee",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/electron": "^1.4.38",
+    "@types/node": "^20.0.0",
+    "concurrently": "^9.2.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0",
+    "selfsigned": "^2.4.1",
+    "sharp": "^0.34.2",
+    "svg2png-wasm": "^1.4.1",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.streamer-alerts.app",
+    "productName": "Streamer Alerts",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "renderer/dist/**/*",
+      "renderer/index.html",
+      "renderer/styles.css",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

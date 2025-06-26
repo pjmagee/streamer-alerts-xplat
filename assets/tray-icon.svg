@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#6441a5" stroke="#ffffff" stroke-width="1"/>
+  
+  <!-- Speaker/Megaphone icon -->
+  <g fill="#ffffff">
+    <!-- Speaker cone -->
+    <path d="M8 12 L12 10 L12 22 L8 20 Z"/>
+    <!-- Speaker body -->
+    <rect x="12" y="13" width="6" height="6" rx="1"/>
+    <!-- Sound waves -->
+    <path d="M20 14 Q22 16 20 18" stroke="#ffffff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M22 12 Q25 16 22 20" stroke="#ffffff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Alert dot -->
+  <circle cx="24" cy="8" r="3" fill="#ff4444" stroke="#ffffff" stroke-width="1"/>
+</svg>
