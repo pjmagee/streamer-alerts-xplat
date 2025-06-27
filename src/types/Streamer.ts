@@ -1,13 +1,12 @@
 
 export interface StreamerAccount {
   id: string;
-  username: string;
+  username: string; // for Twitch, this is the user ID, for YouTube, this is the channel ID
   platform: 'twitch' | 'youtube' | 'kick';
   displayName?: string;
   enabled: boolean;
   lastStatus?: 'live' | 'offline';
   lastChecked?: Date;
-  platformId?: string;
 }
 
 export interface StreamerStatus {
@@ -15,8 +14,6 @@ export interface StreamerStatus {
   isLive: boolean;
   justWentLive: boolean;
   title?: string;
-  game?: string;
-  viewerCount?: number;
   url: string;
   displayName: string;
   platform: string;
@@ -29,10 +26,8 @@ export interface TwitchStreamResponse {
     user_login: string;
     user_name: string;
     game_id: string;
-    game_name: string;
     type: string;
     title: string;
-    viewer_count: number;
     started_at: string;
     language: string;
   }>;
@@ -42,17 +37,6 @@ export interface YouTubeChannelResponse {
   items: Array<{
     snippet: {
       title: string;
-      description: string;
-      thumbnails: {
-        default: { url: string };
-        medium: { url: string };
-        high: { url: string };
-      };
-    };
-    statistics: {
-      viewCount: string;
-      subscriberCount: string;
-      videoCount: string;
     };
   }>;
 }
@@ -69,7 +53,6 @@ export interface AppConfig {
 }
 
 export interface ApiCredentials {
-
   twitch: {
     clientId: string;
     accessToken: string;
@@ -96,6 +79,6 @@ export interface ApiCredentials {
     expiresAt?: number;
     isLoggedIn: boolean;
     username?: string;
-        displayName?: string;
+    displayName?: string;
   };
 }

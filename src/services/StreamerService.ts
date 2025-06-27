@@ -48,26 +48,16 @@ export class StreamerService {
     const wasLive = account.lastStatus === 'live';
     let isLive = false;
     let title = '';
-    let game = '';
-    let viewerCount = 0;
 
     switch (account.platform) {
       case 'twitch':
         const twitchData = await this.checkTwitchStream(account.username);
         isLive = twitchData.isLive;
         title = twitchData.title;
-        game = twitchData.game;
-        viewerCount = twitchData.viewerCount;
         break;
 
-      case 'youtube':
-        // For YouTube, we need the channel ID. If platformId is set, use it.
-        // Otherwise, try to resolve the username/handle to a channel ID.
-        const channelId = account.platformId || await this.resolveYouTubeChannelId(account.username);
-        if (!channelId) {
-          throw new Error(`Could not find YouTube channel ID for ${account.username}. Please set the platformId field.`);
-        }
-        const youtubeData = await this.checkYouTubeStream(channelId);
+      case 'youtube':        
+        const youtubeData = await this.checkYouTubeStream(account.username);
         isLive = youtubeData.isLive;
         title = youtubeData.title;
         break;
@@ -76,7 +66,6 @@ export class StreamerService {
         const kickData = await this.checkKickStream(account.username);
         isLive = kickData.isLive;
         title = kickData.title;
-        viewerCount = kickData.viewerCount;
         break;
     }
 
@@ -91,15 +80,13 @@ export class StreamerService {
       isLive,
       justWentLive,
       title,
-      game,
-      viewerCount,
       url: this.getStreamUrl(account),
       displayName: account.displayName || account.username,
       platform: account.platform
     };
   }
 
-  private async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string; game: string; viewerCount: number }> {
+  private async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string }> {
     const credentials = this.configService.getApiCredentials();
     
     // Check if user is logged in with Twitch
@@ -137,13 +124,11 @@ export class StreamerService {
       if (streamData) {
         return {
           isLive: true,
-          title: streamData.title,
-          game: streamData.game_name,
-          viewerCount: streamData.viewer_count
+          title: streamData.title
         };
       }
 
-      return { isLive: false, title: '', game: '', viewerCount: 0 };
+      return { isLive: false, title: '' };
     } catch (error) {
       console.error('Error checking Twitch stream:', error);
       
@@ -156,7 +141,7 @@ export class StreamerService {
         throw new Error('Twitch authentication failed. Please re-authenticate with Twitch.');
       }
       
-      return { isLive: false, title: '', game: '', viewerCount: 0 };
+      return { isLive: false, title: '' };
     }
   }
 
@@ -164,7 +149,7 @@ export class StreamerService {
     const credentials = this.configService.getApiCredentials();
     
     if (!credentials.youtube.isLoggedIn || !credentials.youtube.accessToken) {
-      console.info(`Skipping YouTube check for channel ${channelId}: User not authenticated with YouTube`);
+      console.info(`Skipping YouTube check for ${channelId}: User not authenticated with YouTube`);
       throw new Error('AUTHENTICATION_REQUIRED');
     }
 
@@ -185,7 +170,8 @@ export class StreamerService {
     }
 
     try {
-      // Check for live streams
+
+      // Step 2: Check if the channel is live using the search API with eventType=live
       const response = await axios.get(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video`,
         {
@@ -207,20 +193,42 @@ export class StreamerService {
     } catch (error) {
       console.error('Error checking YouTube stream:', error);
       
-      // If it's an authentication error, mark the user as not logged in
-      if (error instanceof Error && (error as any).response?.status === 401) {
-        const credentials = this.configService.getApiCredentials();
-        credentials.youtube.isLoggedIn = false;
-        credentials.youtube.accessToken = '';
-        this.configService.setApiCredentials(credentials);
-        throw new Error('YouTube authentication failed. Please re-authenticate with YouTube.');
+      // Handle different types of API errors
+      if (error instanceof Error && (error as any).response) {
+        const status = (error as any).response.status;
+        const responseData = (error as any).response.data;
+        
+        if (status === 401) {
+          // Token expired or invalid
+          const credentials = this.configService.getApiCredentials();
+          credentials.youtube.isLoggedIn = false;
+          credentials.youtube.accessToken = '';
+          this.configService.setApiCredentials(credentials);
+          throw new Error('YouTube authentication failed. Please re-authenticate with YouTube.');
+        } else if (status === 403) {
+          // Forbidden - could be quota exceeded, insufficient permissions, or API key issues
+          console.error('YouTube API 403 error details:', responseData);
+          
+          if (responseData?.error?.message?.includes('quota')) {
+            throw new Error('YouTube API quota exceeded. Please try again later.');
+          } else if (responseData?.error?.message?.includes('permission') || responseData?.error?.message?.includes('scope')) {
+            throw new Error('Insufficient permissions for YouTube API. Please re-authenticate with YouTube to grant live stream access.');
+          } else {
+            throw new Error(`YouTube API access denied: ${responseData?.error?.message || 'Unknown error'}`);
+          }
+        } else if (status === 404) {
+          console.warn(`YouTube channel ${channelId} not found`);
+          return { isLive: false, title: '' };
+        }
       }
       
+      // For other errors, return offline status but don't throw
+      console.warn(`Failed to check YouTube stream status for ${channelId}:`, error);
       return { isLive: false, title: '' };
     }
   }
 
-  private async checkKickStream(username: string): Promise<{ isLive: boolean; title: string; viewerCount: number }> {
+  private async checkKickStream(username: string): Promise<{ isLive: boolean; title: string }> {
     const credentials = this.configService.getApiCredentials();
     
     if (!credentials.kick.isLoggedIn || !credentials.kick.accessToken) {
@@ -254,7 +262,7 @@ export class StreamerService {
         },
         headers: {
           'Authorization': `Bearer ${cleanAccessToken}`,
-          'Accept': 'application/json'
+          'Accept': '*/*'
         }
       });
 
@@ -264,14 +272,13 @@ export class StreamerService {
         if (channelData.stream && channelData.stream.is_live) {
           return {
             isLive: true,
-            title: channelData.stream_title || '',
-            viewerCount: channelData.stream.viewer_count || 0
+            title: channelData.stream_title || ''
           };
         }
       }
 
-      return { isLive: false, title: '', viewerCount: 0 };
-    } catch (error) {
+      return { isLive: false, title: '' };
+    } catch (error) {      
       console.error('Error checking Kick stream:', error);
       
       // If it's an authentication error, mark the user as not logged in
@@ -283,43 +290,7 @@ export class StreamerService {
         throw new Error('Kick authentication failed. Please re-authenticate with Kick.');
       }
       
-      return { isLive: false, title: '', viewerCount: 0 };
-    }
-  }
-
-  private async resolveYouTubeChannelId(usernameOrHandle: string): Promise<string | null> {
-    const credentials = this.configService.getApiCredentials();
-    
-    if (!credentials.youtube.isLoggedIn || !credentials.youtube.accessToken) {
-      return null;
-    }
-
-    try {
-      // Try to search for the channel by username or handle
-      let searchQuery = usernameOrHandle;
-      if (usernameOrHandle.startsWith('@')) {
-        searchQuery = usernameOrHandle.substring(1); // Remove @ prefix
-      }
-
-      const response = await axios.get(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(searchQuery)}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${credentials.youtube.accessToken}`
-          }
-        }
-      );
-
-      const channels = response.data.items;
-      if (channels && channels.length > 0) {
-        // Return the first matching channel ID
-        return channels[0].snippet.channelId;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error resolving YouTube channel ID:', error);
-      return null;
+      return { isLive: false, title: '' };
     }
   }
 
@@ -327,7 +298,7 @@ export class StreamerService {
     switch (account.platform) {
       case 'twitch':
         return `https://twitch.tv/${account.username}`;
-      case 'youtube':
+      case 'youtube':       
         return `https://youtube.com/channel/${account.username}`;
       case 'kick':
         return `https://kick.com/${account.username}`;

@@ -3,7 +3,7 @@ import * as path from 'path';
 import { StreamerService } from './services/StreamerService';
 import { ConfigService } from './services/ConfigService';
 import { OAuthService } from './services/OAuthService';
-import { StreamerAccount, StreamerStatus } from './types/Streamer';
+import { StreamerStatus } from './types/Streamer';
 
 // Set app name immediately when module loads
 app.setName('Streamer Alerts');
@@ -33,7 +33,7 @@ class StreamerAlertsApp {
 
   private setupApp(): void {
     // App name is already set at module load time
-    
+
     app.whenReady().then(async () => {
       this.createTray();
       await this.validateStoredTokens();
@@ -51,19 +51,41 @@ class StreamerAlertsApp {
     });
   }
 
-  private setupIPC(): void {    
+  private setupIPC(): void {
+
     // Config IPC handlers
     ipcMain.handle('config:getAccounts', () => this.configService.getAccounts());
     ipcMain.handle('config:addAccount', (_, account) => this.configService.addAccount(account));
     ipcMain.handle('config:updateAccount', (_, id, updates) => this.configService.updateAccount(id, updates));
     ipcMain.handle('config:removeAccount', (_, id) => this.configService.removeAccount(id));
     ipcMain.handle('config:getNotificationsEnabled', () => this.configService.isNotificationsEnabled());
-    ipcMain.handle('config:setNotificationsEnabled', (_, enabled) => this.configService.setNotificationsEnabled(enabled));
+
+    ipcMain.handle('config:setNotificationsEnabled', (_, enabled) => {
+      this.configService.setNotificationsEnabled(enabled);
+      this.notificationsEnabled = enabled;
+
+      // Start or stop streaming checks based on notifications setting
+      if (enabled) {
+        this.startStreamingChecks();
+      } else {
+        if (this.checkInterval) {
+          clearInterval(this.checkInterval);
+          this.checkInterval = null;
+        }
+      }
+    });
+
     ipcMain.handle('config:getCheckInterval', () => this.configService.getCheckInterval());
-    ipcMain.handle('config:setCheckInterval', (_, interval) => this.configService.setCheckInterval(interval));    // API Credentials IPC handlers
+    ipcMain.handle('config:setCheckInterval', (_, interval) => {
+      this.configService.setCheckInterval(interval);
+      // Restart streaming checks with new interval
+      this.restartStreamingChecks();
+    });
+
+    // API Credentials IPC handlers
     ipcMain.handle('config:getApiCredentials', () => this.configService.getApiCredentials());
     ipcMain.handle('config:setApiCredentials', (_, credentials) => this.configService.setApiCredentials(credentials));    // OAuth IPC handlers for all platforms
-   
+
     ipcMain.handle('oauth:authenticateTwitch', async () => {
       try {
         const success = await this.oauthService.loginTwitch();
@@ -139,14 +161,11 @@ class StreamerAlertsApp {
       }
     });
 
-    // Legacy API credential handlers (deprecated)
-    ipcMain.handle('config:setKickCredentials', (_, clientId, accessToken) => this.configService.setKickCredentials(clientId, accessToken));
-
     // Stream checking
     ipcMain.handle('stream:checkStatus', async (_, account) => {
       return await this.streamerService.checkMultipleStreamers([account]);
-    });    
-    
+    });
+
     // Window management - hide instead of close to keep window available
     ipcMain.handle('window:close', () => {
       if (this.mainWindow) {
@@ -158,7 +177,7 @@ class StreamerAlertsApp {
         this.mainWindow.minimize();
       }
     });
-    
+
     // Shell methods
     ipcMain.handle('shell:openExternal', (_, url: string) => {
       shell.openExternal(url);
@@ -166,11 +185,11 @@ class StreamerAlertsApp {
   }
   private createTray(): void {
     const iconPath = path.join(__dirname, '../assets/tray-icon.png');
-    
+
     let trayIcon: Electron.NativeImage;
     try {
       trayIcon = nativeImage.createFromPath(iconPath);
-      
+
       // Resize appropriately for different operating systems
       if (process.platform === 'win32') {
         trayIcon = trayIcon.resize({ width: 16, height: 16 });
@@ -181,7 +200,7 @@ class StreamerAlertsApp {
         // Linux
         trayIcon = trayIcon.resize({ width: 22, height: 22 });
       }
-      
+
       if (trayIcon.isEmpty()) {
         throw new Error('Icon is empty');
       }
@@ -190,14 +209,16 @@ class StreamerAlertsApp {
       // Use an empty image as fallback
       trayIcon = nativeImage.createEmpty();
     }
-    
+
     this.tray = new Tray(trayIcon);
     this.tray.setToolTip('Streamer Alerts - Monitor your favorite streamers');
 
     // Left click opens configuration window
     this.tray.on('click', () => {
       this.createMainWindow();
-    });    // Right click shows context menu
+    });
+
+    // Right click shows context menu
     this.tray.on('right-click', () => {
       this.showTrayContextMenu();
     });
@@ -205,14 +226,14 @@ class StreamerAlertsApp {
 
   private updateTrayIcon(hasLiveStreamers: boolean): void {
     if (!this.tray) return;
-    
+
     const iconName = hasLiveStreamers ? 'tray-icon-alert.png' : 'tray-icon.png';
     const iconPath = path.join(__dirname, '../assets', iconName);
-    
+
     let trayIcon: Electron.NativeImage;
     try {
       trayIcon = nativeImage.createFromPath(iconPath);
-      
+
       // Resize appropriately for different operating systems
       if (process.platform === 'win32') {
         trayIcon = trayIcon.resize({ width: 16, height: 16 });
@@ -223,13 +244,13 @@ class StreamerAlertsApp {
         // Linux
         trayIcon = trayIcon.resize({ width: 22, height: 22 });
       }
-      
+
       if (!trayIcon.isEmpty()) {
         this.tray.setImage(trayIcon);
-        
+
         // Update tooltip to reflect status
-        const tooltip = hasLiveStreamers 
-          ? 'Streamer Alerts - Streamers are live!' 
+        const tooltip = hasLiveStreamers
+          ? 'Streamer Alerts - Streamers are live!'
           : 'Streamer Alerts - Monitor your favorite streamers';
         this.tray.setToolTip(tooltip);
       }
@@ -252,7 +273,8 @@ class StreamerAlertsApp {
         type: 'separator'
       },
       {
-        label: 'Exit',        click: () => {
+        label: 'Exit',
+        click: () => {
           (app as any).isQuiting = true;
           if (this.checkInterval) {
             clearInterval(this.checkInterval);
@@ -285,8 +307,10 @@ class StreamerAlertsApp {
 
     this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-    // Open DevTools for debugging
-    this.mainWindow.webContents.openDevTools();
+    // Open dev tools in development mode
+    if (!app.isPackaged) {
+      this.mainWindow.webContents.openDevTools();
+    }
 
     this.mainWindow.once('ready-to-show', () => {
       this.mainWindow?.show();
@@ -315,10 +339,15 @@ class StreamerAlertsApp {
     // Initial check
     await this.checkStreamStatus();
 
-    // Set up interval for regular checks (every 2 minutes)
+    // Get the configured check interval
+    const checkIntervalMs = this.configService.getCheckInterval();
+
+    // Set up interval for regular checks using the configured interval
     this.checkInterval = setInterval(async () => {
       await this.checkStreamStatus();
-    }, 120000);
+    }, checkIntervalMs);
+
+    console.log(`Stream checks started with ${checkIntervalMs / 1000 / 60} minute interval`);
   }
   private async checkStreamStatus(): Promise<void> {
     if (!this.notificationsEnabled) return;
@@ -337,7 +366,7 @@ class StreamerAlertsApp {
 
       // Check if any streamers are live
       const hasLiveStreamers = statusUpdates.some((update: StreamerStatus) => update.isLive);
-      
+
       // Update tray icon if live status changed
       if (this.hasLiveStreamers !== hasLiveStreamers) {
         this.hasLiveStreamers = hasLiveStreamers;
@@ -380,10 +409,10 @@ class StreamerAlertsApp {
 
   private async validateStoredTokens(): Promise<void> {
     console.log('Validating stored OAuth tokens on app startup...');
-    
+
     try {
       const credentials = this.configService.getApiCredentials();
-      
+
       // Validate each platform's tokens
       if (credentials.twitch.isLoggedIn) {
         const twitchValid = await this.oauthService.validateAndRefreshToken('twitch');
@@ -393,7 +422,7 @@ class StreamerAlertsApp {
           console.log('Twitch token validated successfully');
         }
       }
-      
+
       if (credentials.youtube.isLoggedIn) {
         const youtubeValid = await this.oauthService.validateAndRefreshToken('youtube');
         if (!youtubeValid) {
@@ -402,7 +431,7 @@ class StreamerAlertsApp {
           console.log('YouTube token validated successfully');
         }
       }
-      
+
       if (credentials.kick.isLoggedIn) {
         const kickValid = await this.oauthService.validateAndRefreshToken('kick');
         if (!kickValid) {
@@ -414,6 +443,17 @@ class StreamerAlertsApp {
     } catch (error) {
       console.error('Error validating stored tokens:', error);
     }
+  }
+
+  private restartStreamingChecks(): void {
+    // Clear existing interval if it exists
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+
+    // Start streaming checks with new interval
+    this.startStreamingChecks();
   }
 }
 

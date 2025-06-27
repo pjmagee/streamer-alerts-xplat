@@ -66,11 +66,6 @@ export interface ElectronAPI {
   authenticateKick: () => Promise<{ success: boolean; error?: string }>;
   logoutKick: () => Promise<void>;
   
-  // Legacy methods (deprecated)
-  setTwitchCredentials: (clientId: string, accessToken: string) => Promise<void>;
-  setYouTubeCredentials: (apiKey: string) => Promise<void>;
-  setKickCredentials: (clientId?: string, accessToken?: string) => Promise<void>;
-  
   // Stream checking
   checkStreamStatus: (account: StreamerAccount) => Promise<any>;
   

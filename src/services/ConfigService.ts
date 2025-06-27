@@ -19,8 +19,8 @@ export class ConfigService {
         notificationsEnabled: true,
         checkInterval: 120000, // 2 minutes
         windowSettings: {
-          width: 800,
-          height: 600
+          width: 1280,
+          height: 720
         },        
         apiCredentials: {
           twitch: {
@@ -110,7 +110,7 @@ export class ConfigService {
   }
 
   public getWindowSettings(): { width: number; height: number } {
-    return this.store.get('windowSettings', { width: 800, height: 600 });
+    return this.store.get('windowSettings', { width: 1280, height: 720 });
   }
 
   public setWindowSettings(settings: { width: number; height: number }): void {
@@ -154,10 +154,11 @@ export class ConfigService {
   public setApiCredentials(credentials: ApiCredentials): void {
     this.store.set('apiCredentials', credentials);
   }  
+
+  // OAuth methods for all platforms
   
   public setTwitchOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, username?: string, displayName?: string, clientId?: string): void {
     const credentials = this.getApiCredentials();
-
     credentials.twitch = {
       clientId: clientId || credentials.twitch.clientId || '',
       accessToken,
@@ -166,22 +167,12 @@ export class ConfigService {
       isLoggedIn: true,
       username,
       displayName
-    };
-    
-    console.log('Config Debug - Setting Twitch OAuth credentials:', {
-      clientId: credentials.twitch.clientId,
-      accessToken: accessToken.substring(0, 10) + '...',
-      isLoggedIn: credentials.twitch.isLoggedIn,
-      username: credentials.twitch.username,
-      displayName: credentials.twitch.displayName
-    });
-    
+    };    
     this.setApiCredentials(credentials);
   }
 
   public setYouTubeOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, displayName?: string, clientId?: string): void {
     const credentials = this.getApiCredentials();
-
     credentials.youtube = {
       clientId: clientId || credentials.youtube.clientId || '',
       accessToken,
@@ -189,32 +180,12 @@ export class ConfigService {
       expiresAt,
       isLoggedIn: true,
       displayName
-    };
-    
-
+    };    
     this.setApiCredentials(credentials);
   }
 
-  public logoutTwitch(): void {
+  public setKickOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, username?: string, displayName?: string, clientId?: string): void { 
     const credentials = this.getApiCredentials();
-
-    credentials.twitch = {
-      clientId: credentials.twitch.clientId || '',      
-      accessToken: '',
-      refreshToken: '',
-      expiresAt: 0,
-      isLoggedIn: false,
-      username: '',
-      displayName: ''
-    };
-
-    this.setApiCredentials(credentials);
-  }
-
-  public setKickOAuthCredentials(accessToken: string, refreshToken?: string, expiresAt?: number, username?: string, displayName?: string, clientId?: string): void {
-    
-    const credentials = this.getApiCredentials();
-    
     credentials.kick = {
       clientId: clientId || credentials.kick.clientId || '',
       accessToken,
@@ -224,7 +195,22 @@ export class ConfigService {
       username,
       displayName
     };
+    this.setApiCredentials(credentials);
+  }
 
+  // Logout functions
+
+  public logoutTwitch(): void {
+    const credentials = this.getApiCredentials();
+    credentials.twitch = {
+      clientId: credentials.twitch.clientId || '',      
+      accessToken: '',
+      refreshToken: '',
+      expiresAt: 0,
+      isLoggedIn: false,
+      username: '',
+      displayName: ''
+    };
     this.setApiCredentials(credentials);
   }
 
@@ -260,24 +246,8 @@ export class ConfigService {
     this.setApiCredentials(credentials);
   }
 
-  public setTwitchClientId(clientId: string): void {
-    const credentials = this.getApiCredentials();
-    credentials.twitch.clientId = clientId;
-    this.setApiCredentials(credentials);
-  }  
-  
-  public setKickCredentials(clientId?: string, accessToken?: string): void {
-    const credentials = this.getApiCredentials();
-    credentials.kick = {
-      ...credentials.kick,
-      clientId: clientId || credentials.kick.clientId || '',
-      accessToken: accessToken || credentials.kick.accessToken || '',
-      isLoggedIn: !!(accessToken || credentials.kick.accessToken)
-    };
-    this.setApiCredentials(credentials);
-  }
-
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
+
 }

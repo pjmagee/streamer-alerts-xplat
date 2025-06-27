@@ -1,4 +1,4 @@
-import { BrowserWindow, shell } from 'electron';
+import { shell } from 'electron';
 import { EMBEDDED_CREDENTIALS, OAUTH_CONFIG } from '../config';
 import { ConfigService } from './ConfigService';
 import { createHash, randomBytes } from 'crypto';
@@ -43,7 +43,7 @@ export class OAuthService {
         },
         body: new URLSearchParams({
           client_id: EMBEDDED_CREDENTIALS.twitch.clientId,
-          scopes: OAUTH_CONFIG.scopes.twitch.join(' '), // Note: parameter is 'scopes' (plural)
+          scopes: OAUTH_CONFIG.scopes.twitch.join(' '),
         }),
       });
 
@@ -152,6 +152,7 @@ export class OAuthService {
     throw new Error('Device authorization expired');
   }
 
+
   /**
    * YouTube OAuth Login using Authorization Code Flow with PKCE
    * Google supports PKCE for public clients (no client secret required)
@@ -162,9 +163,7 @@ export class OAuthService {
       const codeChallenge = this.generateCodeChallenge(codeVerifier);
       const state = this.generateState();
 
-      // Create temporary callback server
       const { server, redirectUri, codePromise } = await this.createCallbackServer(state);
-
       const authUrl = new URL(OAUTH_CONFIG.endpoints.youtube.authorize);
       authUrl.searchParams.set('client_id', EMBEDDED_CREDENTIALS.youtube.clientId);
       authUrl.searchParams.set('redirect_uri', redirectUri);
@@ -176,7 +175,6 @@ export class OAuthService {
       authUrl.searchParams.set('access_type', 'offline'); // Request refresh token
       authUrl.searchParams.set('prompt', 'consent'); // Force consent screen to get refresh token
 
-      // Open browser to auth URL
       shell.openExternal(authUrl.toString());
 
       try {
@@ -190,7 +188,6 @@ export class OAuthService {
         console.error('YouTube OAuth error:', error);
         return false;
       } finally {
-        // Ensure server is closed
         server.close();
       }
     } catch (error) {

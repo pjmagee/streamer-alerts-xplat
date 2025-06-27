@@ -4,6 +4,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Configuration files (contains secrets)
+config.local.json
+config.prod.json
+
 # Build outputs
 dist/
 renderer/dist/
@@ -28,7 +32,7 @@ pids
 *.pid.lock
 
 # Coverage directory used by tools like istanbul
-coverage/
+coverage/ 
 *.lcov
 
 # nyc test coverage
