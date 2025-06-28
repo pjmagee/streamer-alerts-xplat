@@ -90,3 +90,7 @@ typings/
 
 # Electron-Forge
 out/
+
+# Configuration files with sensitive data
+config/config.local.json
+config/config.prod.json
