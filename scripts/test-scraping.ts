@@ -8,7 +8,7 @@ async function testScraping(): Promise<void> {
     try {
         // Test Twitch scraping
         console.log('Testing Twitch scraping...');
-        const twitchResult = await scrapingService.checkTwitchStream('piratesoftware');
+        const twitchResult = await scrapingService.checkTwitchStream('cohhcarnage');
         console.log('Twitch result:', twitchResult);
         console.log();
         
