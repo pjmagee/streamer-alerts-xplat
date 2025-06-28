@@ -12,8 +12,8 @@ test('Kick endpoints accessibility', async () => {
       assert.ok(data, 'Old public API should return data');
       assert.ok(typeof data?.livestream?.is_live === 'boolean', 'Should have is_live boolean');
     }
-  } catch (error: any) {
-    console.log('⚠️ Old public API not accessible:', error.message);
+  } catch (error: unknown) {
+    console.log('⚠️ Old public API not accessible:', error instanceof Error ? error.message : 'Unknown error');
   }
 });
 
@@ -32,8 +32,8 @@ test('Kick new public API without auth', async () => {
       const data = await response2.json();
       assert.ok(data, 'New public API should return data');
     }
-  } catch (error: any) {
-    console.log('⚠️ New public API not accessible:', error.message);
+  } catch (error: unknown) {
+    console.log('⚠️ New public API not accessible:', error instanceof Error ? error.message : 'Unknown error');
   }
 });
 
@@ -46,8 +46,8 @@ test('Kick alternative endpoint', async () => {
       const data = await response3.json();
       assert.ok(data, 'Alternative endpoint should return data');
     }
-  } catch (error: any) {
-    console.log('⚠️ Alternative endpoint not accessible:', error.message);
+  } catch (error: unknown) {
+    console.log('⚠️ Alternative endpoint not accessible:', error instanceof Error ? error.message : 'Unknown error');
   }
 });
 
@@ -61,7 +61,7 @@ test('Kick livestreams endpoint', async () => {
       const data = await response4.json();
       assert.ok(data, 'Livestreams endpoint should return data');
     }
-  } catch (error: any) {
-    console.log('⚠️ Livestreams endpoint not accessible:', error.message);
+  } catch (error: unknown) {
+    console.log('⚠️ Livestreams endpoint not accessible:', error instanceof Error ? error.message : 'Unknown error');
   }
 });

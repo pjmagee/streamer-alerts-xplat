@@ -60,7 +60,7 @@ export class OAuthService {
       }
 
       const deviceData = await deviceResponse.json();
-      const { device_code, user_code, verification_uri, expires_in, interval } = deviceData;
+      const { device_code, verification_uri, expires_in, interval } = deviceData;
 
       // Step 2: Open browser directly - no popup needed since code is prefilled
       console.log('\n🔥 TWITCH AUTHENTICATION');

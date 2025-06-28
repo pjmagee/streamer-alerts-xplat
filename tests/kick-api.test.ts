@@ -6,9 +6,13 @@ interface ApiCredentials {
   kick: {
     isLoggedIn: boolean;
     accessToken?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
-  [platform: string]: any;
+  [platform: string]: {
+    isLoggedIn: boolean;
+    accessToken?: string;
+    [key: string]: unknown;
+  };
 }
 
 test('Kick API token introspection', async () => {
@@ -48,9 +52,9 @@ test('Kick API token introspection', async () => {
     } else {
       throw new Error(`Unexpected response: ${introspectResponse.status}`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If we get a 401, that's expected for invalid tokens
-    if (error.message?.includes('401')) {
+    if (error instanceof Error && error.message?.includes('401')) {
       console.log('⚠️ Token is invalid or expired');
     } else {
       throw error;
@@ -94,9 +98,9 @@ test('Kick API user info', async () => {
     } else {
       throw new Error(`Unexpected response: ${userResponse.status}`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If we get a 401, that's expected for invalid tokens
-    if (error.message?.includes('401')) {
+    if (error instanceof Error && error.message?.includes('401')) {
       console.log('⚠️ Token is invalid or expired');
     } else {
       throw error;

@@ -6,6 +6,7 @@ import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { PublisherGithub } from '@electron-forge/publisher-github';
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -76,17 +77,14 @@ const config: ForgeConfig = {
     }),
   ],
   publishers: [
-    {
-      name: '@electron-forge/publisher-github',
-      config: {
-        repository: {
-          owner: 'pjmagee',
-          name: 'streamer-alerts-xplat'
-        },
-        prerelease: false,
-        draft: true
-      }
-    }
+    new PublisherGithub({
+      repository: {
+        owner: 'pjmagee',
+        name: 'streamer-alerts-xplat'
+      },
+      prerelease: false,
+      draft: true
+    })
   ]
 };
 
