@@ -3,13 +3,23 @@
  * This script handles copying production credentials to the build output
  */
 
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
+
+interface ProductionConfig {
+  TWITCH_CLIENT_ID: string;
+  YOUTUBE_CLIENT_ID: string;
+  KICK_CLIENT_ID: string;
+  KICK_CLIENT_SECRET: string;
+}
 
 console.log('🏗️  Production build detected - preparing credentials...');
 
-// Check if config.prod.json exists in the root
-const prodConfigSource = path.join(__dirname, 'config.prod.json');
+// Get the project root directory (one level up from scripts)
+const projectRoot = path.join(__dirname, '..');
+
+// Check if config.prod.json exists in the project root
+const prodConfigSource = path.join(projectRoot, 'config.prod.json');
 
 if (!fs.existsSync(prodConfigSource)) {
   console.error('❌ Missing config.prod.json file!');
@@ -27,17 +37,17 @@ if (!fs.existsSync(prodConfigSource)) {
 }
 
 // Validate the config file structure
-let prodConfig;
+let prodConfig: ProductionConfig;
 try {
   const configContent = fs.readFileSync(prodConfigSource, 'utf8');
-  prodConfig = JSON.parse(configContent);
+  prodConfig = JSON.parse(configContent) as ProductionConfig;
 } catch (error) {
-  console.error('❌ Error reading config.prod.json:', error.message);
+  console.error('❌ Error reading config.prod.json:', (error as Error).message);
   process.exit(1);
 }
 
 // Validate that all required fields are present
-const requiredFields = [
+const requiredFields: (keyof ProductionConfig)[] = [
   'TWITCH_CLIENT_ID',
   'YOUTUBE_CLIENT_ID', 
   'KICK_CLIENT_ID',
@@ -57,14 +67,14 @@ if (missingFields.length > 0) {
 console.log('✅ Production configuration validated');
 
 // Ensure dist directory exists
-const distDir = path.join(__dirname, 'dist');
+const distDir = path.join(projectRoot, 'dist');
 if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
 }
 
 // Copy the config to the dist directory where the packaged app will look for it
-const prodConfigDest = path.join(__dirname, 'dist', 'config.prod.json');
+const prodConfigDest = path.join(distDir, 'config.prod.json');
 fs.copyFileSync(prodConfigSource, prodConfigDest);
 
 console.log('✅ Production credentials copied to dist/config.prod.json');
-console.log('� Ready for packaging!');
+console.log('🚀 Ready for packaging!');

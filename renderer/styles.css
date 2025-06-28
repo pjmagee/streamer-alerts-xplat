@@ -47,12 +47,14 @@ main {
 }
 
 .settings-section,
+.strategy-section,
 .accounts-section,
 .api-section {
     margin-bottom: 30px;
 }
 
 .settings-section h2,
+.strategy-section h2,
 .accounts-section h2,
 .api-section h2 {
     color: #4a5568;
@@ -543,6 +545,81 @@ input:checked + .toggle-slider:before {
 
 .hidden {
     display: none;
+}
+
+/* Strategy Section Styles */
+.strategy-help {
+    color: #718096;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.strategy-group {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.strategy-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.platform-label {
+    font-weight: 600;
+    font-size: 1rem;
+    min-width: 100px;
+}
+
+.strategy-toggle {
+    display: flex;
+    background: #e2e8f0;
+    border-radius: 6px;
+    padding: 2px;
+    gap: 0;
+}
+
+.toggle-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin: 0;
+}
+
+.toggle-option input[type="radio"] {
+    display: none;
+}
+
+.toggle-text {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: transparent;
+    color: #4a5568;
+    min-width: 70px;
+    text-align: center;
+}
+
+.toggle-option input[type="radio"]:checked + .toggle-text {
+    background: #667eea;
+    color: white;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.toggle-option:hover .toggle-text {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.toggle-option input[type="radio"]:checked:hover + .toggle-text {
+    background: #5a67d8;
 }
 
 /* Responsive design */

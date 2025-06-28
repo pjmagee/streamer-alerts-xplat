@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 /**
  * Data Migration and Cleanup Utility for Streamer Alerts
@@ -7,12 +7,29 @@
  * migration from confidential to public OAuth clients.
  */
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+interface ApiCredentials {
+  [platform: string]: {
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    isLoggedIn?: boolean;
+    clientSecret?: string;
+    channelId?: string;
+    channelName?: string;
+  };
+}
+
+interface ConfigData {
+  apiCredentials?: ApiCredentials;
+  [key: string]: any;
+}
 
 // Default electron-store locations for different platforms
-const getAppDataPath = () => {
+const getAppDataPath = (): string => {
   const appName = 'streamer-alerts-xplat';
   
   switch (process.platform) {
@@ -27,7 +44,7 @@ const getAppDataPath = () => {
   }
 };
 
-const cleanupUserData = () => {
+const cleanupUserData = (): void => {
   const appDataPath = getAppDataPath();
   const configFile = path.join(appDataPath, 'config.json');
   
@@ -42,7 +59,7 @@ const cleanupUserData = () => {
   
   try {
     // Read current config
-    const configData = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    const configData: ConfigData = JSON.parse(fs.readFileSync(configFile, 'utf8'));
     let migrationNeeded = false;
     
     console.log('📋 Checking for client secrets...');
@@ -52,22 +69,22 @@ const cleanupUserData = () => {
       const platforms = ['twitch', 'youtube', 'kick'];
       
       platforms.forEach(platform => {
-        if (configData.apiCredentials[platform] && 'clientSecret' in configData.apiCredentials[platform]) {
+        if (configData.apiCredentials![platform] && 'clientSecret' in configData.apiCredentials![platform]) {
           console.log(`🚨 Found client secret field for ${platform} - removing...`);
-          delete configData.apiCredentials[platform].clientSecret;
+          delete configData.apiCredentials![platform].clientSecret;
           migrationNeeded = true;
         }
         
         // Remove YouTube channelId/channelName (these should be in individual streamer records)
-        if (platform === 'youtube' && configData.apiCredentials[platform]) {
-          if ('channelId' in configData.apiCredentials[platform]) {
+        if (platform === 'youtube' && configData.apiCredentials![platform]) {
+          if ('channelId' in configData.apiCredentials![platform]) {
             console.log(`🚨 Found channelId field in YouTube credentials - removing...`);
-            delete configData.apiCredentials[platform].channelId;
+            delete configData.apiCredentials![platform].channelId;
             migrationNeeded = true;
           }
-          if ('channelName' in configData.apiCredentials[platform]) {
+          if ('channelName' in configData.apiCredentials![platform]) {
             console.log(`🚨 Found channelName field in YouTube credentials - removing...`);
-            delete configData.apiCredentials[platform].channelName;
+            delete configData.apiCredentials![platform].channelName;
             migrationNeeded = true;
           }
         }
@@ -83,11 +100,11 @@ const cleanupUserData = () => {
       // Clear all tokens to force re-authentication with PKCE
       if (configData.apiCredentials) {
         ['twitch', 'youtube', 'kick'].forEach(platform => {
-          if (configData.apiCredentials[platform]) {
-            configData.apiCredentials[platform].accessToken = '';
-            configData.apiCredentials[platform].refreshToken = '';
-            configData.apiCredentials[platform].expiresAt = 0;
-            configData.apiCredentials[platform].isLoggedIn = false;
+          if (configData.apiCredentials![platform]) {
+            configData.apiCredentials![platform].accessToken = '';
+            configData.apiCredentials![platform].refreshToken = '';
+            configData.apiCredentials![platform].expiresAt = 0;
+            configData.apiCredentials![platform].isLoggedIn = false;
           }
         });
       }
@@ -104,7 +121,7 @@ const cleanupUserData = () => {
     }
     
   } catch (error) {
-    console.error('❌ Error during cleanup:', error.message);
+    console.error('❌ Error during cleanup:', (error as Error).message);
     console.log('🆘 If you encounter issues, you can manually delete the config file:');
     console.log(`   ${configFile}`);
   }
@@ -117,7 +134,7 @@ if (args.includes('--help') || args.includes('-h')) {
   console.log(`
 Streamer Alerts - Security Data Cleanup
 
-Usage: node cleanup-data.js [options]
+Usage: tsx scripts/cleanup-data.ts [options]
 
 Options:
   --help, -h     Show this help message

@@ -1,5 +1,5 @@
 import Store from 'electron-store';
-import { StreamerAccount, AppConfig, ApiCredentials } from '../types/Streamer';
+import { StreamerAccount, AppConfig, ApiCredentials, PlatformStrategies, StreamCheckStrategy } from '../types/Streamer';
 import { app } from 'electron';
 
 export class ConfigService {
@@ -21,7 +21,12 @@ export class ConfigService {
         windowSettings: {
           width: 1280,
           height: 720
-        },        
+        },
+        strategies: {
+          twitch: 'scrape',
+          youtube: 'scrape',
+          kick: 'scrape'
+        },
         apiCredentials: {
           twitch: {
             clientId: '',
@@ -244,6 +249,26 @@ export class ConfigService {
     };
 
     this.setApiCredentials(credentials);
+  }
+
+  // Strategy management methods
+
+  public getStrategies(): PlatformStrategies {
+    return this.store.get('strategies', {
+      twitch: 'api',
+      youtube: 'api',
+      kick: 'api'
+    });
+  }
+
+  public setStrategies(strategies: PlatformStrategies): void {
+    this.store.set('strategies', strategies);
+  }
+
+  public setPlatformStrategy(platform: 'twitch' | 'youtube' | 'kick', strategy: StreamCheckStrategy): void {
+    const strategies = this.getStrategies();
+    strategies[platform] = strategy;
+    this.setStrategies(strategies);
   }
 
   private generateId(): string {

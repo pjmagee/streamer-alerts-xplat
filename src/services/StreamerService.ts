@@ -1,16 +1,20 @@
-import axios from 'axios';
-import { StreamerAccount, StreamerStatus, TwitchStreamResponse } from '../types/Streamer';
+import { StreamerAccount, StreamerStatus } from '../types/Streamer';
 import { ConfigService } from './ConfigService';
 import { OAuthService } from './OAuthService';
-import { EMBEDDED_CREDENTIALS } from '../config';
+import { ScrapingService } from './ScrapingService';
+import { ApiService } from './ApiService';
 
 export class StreamerService {
   private configService: ConfigService;
   private oauthService: OAuthService;
+  private scrapingService: ScrapingService;
+  private apiService: ApiService;
 
   constructor() {
     this.configService = new ConfigService();
     this.oauthService = new OAuthService(this.configService);
+    this.scrapingService = new ScrapingService();
+    this.apiService = new ApiService(this.configService, this.oauthService);
   }
 
   public async checkMultipleStreamers(accounts: StreamerAccount[]): Promise<StreamerStatus[]> {
@@ -48,24 +52,45 @@ export class StreamerService {
     const wasLive = account.lastStatus === 'live';
     let isLive = false;
     let title = '';
+    
+    const strategies = this.configService.getStrategies();
+    const strategy = strategies[account.platform];
 
     switch (account.platform) {
       case 'twitch':
-        const twitchData = await this.checkTwitchStream(account.username);
-        isLive = twitchData.isLive;
-        title = twitchData.title;
+        if (strategy === 'scrape') {
+          const twitchData = await this.scrapingService.checkTwitchStream(account.username);
+          isLive = twitchData.isLive;
+          title = twitchData.title;
+        } else {
+          const twitchData = await this.apiService.checkTwitchStream(account.username);
+          isLive = twitchData.isLive;
+          title = twitchData.title;
+        }
         break;
 
-      case 'youtube':        
-        const youtubeData = await this.checkYouTubeStream(account.username);
-        isLive = youtubeData.isLive;
-        title = youtubeData.title;
+      case 'youtube':
+        if (strategy === 'scrape') {
+          const youtubeData = await this.scrapingService.checkYouTubeStream(account.username);
+          isLive = youtubeData.isLive;
+          title = youtubeData.title;
+        } else {
+          const youtubeData = await this.apiService.checkYouTubeStream(account.username);
+          isLive = youtubeData.isLive;
+          title = youtubeData.title;
+        }
         break;
 
       case 'kick':
-        const kickData = await this.checkKickStream(account.username);
-        isLive = kickData.isLive;
-        title = kickData.title;
+        if (strategy === 'scrape') {
+          const kickData = await this.scrapingService.checkKickStream(account.username);
+          isLive = kickData.isLive;
+          title = kickData.title;
+        } else {
+          const kickData = await this.apiService.checkKickStream(account.username);
+          isLive = kickData.isLive;
+          title = kickData.title;
+        }
         break;
     }
 
@@ -86,212 +111,8 @@ export class StreamerService {
     };
   }
 
-  private async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string }> {
-    const credentials = this.configService.getApiCredentials();
-    
-    // Check if user is logged in with Twitch
-    if (!credentials.twitch.isLoggedIn || !credentials.twitch.accessToken) {
-      console.info(`Skipping Twitch check for ${username}: User not authenticated with Twitch`);
-      throw new Error('AUTHENTICATION_REQUIRED');
-    }
-
-    // Check if token has expired and refresh if needed
-    if (credentials.twitch.expiresAt && Date.now() >= credentials.twitch.expiresAt) {
-      if (credentials.twitch.refreshToken) {
-        try {
-          await this.oauthService.refreshTwitchToken();
-          // Get updated credentials after refresh
-          const updatedCredentials = this.configService.getApiCredentials();
-          credentials.twitch = updatedCredentials.twitch;
-        } catch (error) {
-          throw new Error('Twitch access token has expired and refresh failed. Please re-authenticate with Twitch.');
-        }
-      } else {
-        throw new Error('Twitch access token has expired. Please re-authenticate with Twitch.');
-      }
-    }
-
-    try {
-      // Use the specific Twitch endpoint: https://api.twitch.tv/helix/streams?user_login={user_name}&type=live
-      const response = await axios.get<TwitchStreamResponse>(`https://api.twitch.tv/helix/streams?user_login=${username}&type=live`, {
-        headers: {
-          'Client-ID': EMBEDDED_CREDENTIALS.twitch.clientId,
-          'Authorization': `Bearer ${credentials.twitch.accessToken}`
-        }
-      });
-
-      const streamData = response.data.data[0];
-      if (streamData) {
-        return {
-          isLive: true,
-          title: streamData.title
-        };
-      }
-
-      return { isLive: false, title: '' };
-    } catch (error) {
-      console.error('Error checking Twitch stream:', error);
-      
-      // If it's an authentication error, mark the user as not logged in
-      if (error instanceof Error && (error as any).response?.status === 401) {
-        const credentials = this.configService.getApiCredentials();
-        credentials.twitch.isLoggedIn = false;
-        credentials.twitch.accessToken = '';
-        this.configService.setApiCredentials(credentials);
-        throw new Error('Twitch authentication failed. Please re-authenticate with Twitch.');
-      }
-      
-      return { isLive: false, title: '' };
-    }
-  }
-
-  private async checkYouTubeStream(channelId: string): Promise<{ isLive: boolean; title: string }> {
-    const credentials = this.configService.getApiCredentials();
-    
-    if (!credentials.youtube.isLoggedIn || !credentials.youtube.accessToken) {
-      console.info(`Skipping YouTube check for ${channelId}: User not authenticated with YouTube`);
-      throw new Error('AUTHENTICATION_REQUIRED');
-    }
-
-    // Check if token has expired and refresh if needed
-    if (credentials.youtube.expiresAt && Date.now() >= credentials.youtube.expiresAt) {
-      if (credentials.youtube.refreshToken) {
-        try {
-          await this.oauthService.refreshYouTubeToken();
-          // Get updated credentials after refresh
-          const updatedCredentials = this.configService.getApiCredentials();
-          credentials.youtube = updatedCredentials.youtube;
-        } catch (error) {
-          throw new Error('YouTube access token has expired and refresh failed. Please re-authenticate with YouTube.');
-        }
-      } else {
-        throw new Error('YouTube access token has expired. Please re-authenticate with YouTube.');
-      }
-    }
-
-    try {
-
-      // Step 2: Check if the channel is live using the search API with eventType=live
-      const response = await axios.get(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video`,
-        {
-          headers: {
-            'Authorization': `Bearer ${credentials.youtube.accessToken}`
-          }
-        }
-      );
-
-      const liveStreams = response.data.items;
-      if (liveStreams && liveStreams.length > 0) {
-        return {
-          isLive: true,
-          title: liveStreams[0].snippet.title
-        };
-      }
-
-      return { isLive: false, title: '' };
-    } catch (error) {
-      console.error('Error checking YouTube stream:', error);
-      
-      // Handle different types of API errors
-      if (error instanceof Error && (error as any).response) {
-        const status = (error as any).response.status;
-        const responseData = (error as any).response.data;
-        
-        if (status === 401) {
-          // Token expired or invalid
-          const credentials = this.configService.getApiCredentials();
-          credentials.youtube.isLoggedIn = false;
-          credentials.youtube.accessToken = '';
-          this.configService.setApiCredentials(credentials);
-          throw new Error('YouTube authentication failed. Please re-authenticate with YouTube.');
-        } else if (status === 403) {
-          // Forbidden - could be quota exceeded, insufficient permissions, or API key issues
-          console.error('YouTube API 403 error details:', responseData);
-          
-          if (responseData?.error?.message?.includes('quota')) {
-            throw new Error('YouTube API quota exceeded. Please try again later.');
-          } else if (responseData?.error?.message?.includes('permission') || responseData?.error?.message?.includes('scope')) {
-            throw new Error('Insufficient permissions for YouTube API. Please re-authenticate with YouTube to grant live stream access.');
-          } else {
-            throw new Error(`YouTube API access denied: ${responseData?.error?.message || 'Unknown error'}`);
-          }
-        } else if (status === 404) {
-          console.warn(`YouTube channel ${channelId} not found`);
-          return { isLive: false, title: '' };
-        }
-      }
-      
-      // For other errors, return offline status but don't throw
-      console.warn(`Failed to check YouTube stream status for ${channelId}:`, error);
-      return { isLive: false, title: '' };
-    }
-  }
-
-  private async checkKickStream(username: string): Promise<{ isLive: boolean; title: string }> {
-    const credentials = this.configService.getApiCredentials();
-    
-    if (!credentials.kick.isLoggedIn || !credentials.kick.accessToken) {
-      console.info(`Skipping Kick check for ${username}: User not authenticated with Kick`);
-      throw new Error('AUTHENTICATION_REQUIRED');
-    }
-
-    // Check if token has expired and refresh if needed
-    if (credentials.kick.expiresAt && Date.now() >= credentials.kick.expiresAt) {
-      if (credentials.kick.refreshToken) {
-        try {
-          await this.oauthService.refreshKickToken();
-          // Get updated credentials after refresh
-          const updatedCredentials = this.configService.getApiCredentials();
-          credentials.kick = updatedCredentials.kick;
-        } catch (error) {
-          throw new Error('Kick access token has expired and refresh failed. Please re-authenticate with Kick.');
-        }
-      } else {
-        throw new Error('Kick access token has expired. Please re-authenticate with Kick.');
-      }
-    }
-
-    try {
-      // Use the correct Kick public API endpoint with slug parameter
-      // Authentication is REQUIRED according to Kick API docs
-      const cleanAccessToken = credentials.kick.accessToken?.trim();
-      const response = await axios.get(`https://api.kick.com/public/v1/channels`, {
-        params: {
-          slug: username  // Use slug parameter as per API docs
-        },
-        headers: {
-          'Authorization': `Bearer ${cleanAccessToken}`,
-          'Accept': '*/*'
-        }
-      });
-
-      const responseData = response.data;
-      if (responseData && responseData.data && responseData.data.length > 0) {
-        const channelData = responseData.data[0]; // Get first channel from data array
-        if (channelData.stream && channelData.stream.is_live) {
-          return {
-            isLive: true,
-            title: channelData.stream_title || ''
-          };
-        }
-      }
-
-      return { isLive: false, title: '' };
-    } catch (error) {      
-      console.error('Error checking Kick stream:', error);
-      
-      // If it's an authentication error, mark the user as not logged in
-      if (error instanceof Error && (error as any).response?.status === 401) {
-        const credentials = this.configService.getApiCredentials();
-        credentials.kick.isLoggedIn = false;
-        credentials.kick.accessToken = '';
-        this.configService.setApiCredentials(credentials);
-        throw new Error('Kick authentication failed. Please re-authenticate with Kick.');
-      }
-      
-      return { isLive: false, title: '' };
-    }
+  public async cleanup(): Promise<void> {
+    await this.scrapingService.cleanup();
   }
 
   private getStreamUrl(account: StreamerAccount): string {

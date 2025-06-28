@@ -53,6 +53,17 @@ class StreamerAlertsRenderer {
       }
     });
 
+    // Strategy controls
+    const strategyRadios = document.querySelectorAll('input[name$="Strategy"]');
+    strategyRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        const platform = target.name.replace('Strategy', '') as 'twitch' | 'youtube' | 'kick';
+        const strategy = target.value as 'api' | 'scrape';
+        window.electronAPI.setPlatformStrategy(platform, strategy);
+      });
+    });
+
     // Platform specific handlers
     this.setupApiHandlers();
   }
@@ -148,6 +159,7 @@ class StreamerAlertsRenderer {
     try {
       const notificationsEnabled = await window.electronAPI.getNotificationsEnabled();
       const checkInterval = await window.electronAPI.getCheckInterval();
+      const strategies = await window.electronAPI.getStrategies();
 
       const notificationsCheckbox = document.getElementById('notificationsEnabled') as HTMLInputElement;
       const checkIntervalInput = document.getElementById('checkInterval') as HTMLInputElement;
@@ -159,6 +171,9 @@ class StreamerAlertsRenderer {
       if (checkIntervalInput) {
         checkIntervalInput.value = String(checkInterval / 60000); // Convert from milliseconds to minutes
       }
+
+      // Load strategy settings
+      this.loadStrategies(strategies);
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -544,6 +559,35 @@ class StreamerAlertsRenderer {
         notification.parentNode.removeChild(notification);
       }
     });
+  }
+
+  loadStrategies(strategies: any): void {
+    // Load Twitch strategy
+    const twitchScrape = document.getElementById('twitchScrape') as HTMLInputElement;
+    const twitchAPI = document.getElementById('twitchAPI') as HTMLInputElement;
+    if (strategies.twitch === 'scrape') {
+      twitchScrape.checked = true;
+    } else {
+      twitchAPI.checked = true;
+    }
+
+    // Load YouTube strategy
+    const youtubeScrape = document.getElementById('youtubeScrape') as HTMLInputElement;
+    const youtubeAPI = document.getElementById('youtubeAPI') as HTMLInputElement;
+    if (strategies.youtube === 'scrape') {
+      youtubeScrape.checked = true;
+    } else {
+      youtubeAPI.checked = true;
+    }
+
+    // Load Kick strategy
+    const kickScrape = document.getElementById('kickScrape') as HTMLInputElement;
+    const kickAPI = document.getElementById('kickAPI') as HTMLInputElement;
+    if (strategies.kick === 'scrape') {
+      kickScrape.checked = true;
+    } else {
+      kickAPI.checked = true;
+    }
   }
 }
 

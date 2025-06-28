@@ -1,5 +1,13 @@
 // Type definitions for the renderer process
 
+export type StreamCheckStrategy = 'api' | 'scrape';
+
+export interface PlatformStrategies {
+  twitch: StreamCheckStrategy;
+  youtube: StreamCheckStrategy;
+  kick: StreamCheckStrategy;
+}
+
 export interface StreamerAccount {
   id: string;
   username: string;
@@ -38,6 +46,7 @@ export interface ApiCredentials {
 export interface AppSettings {
   notificationsEnabled: boolean;
   checkInterval: number;
+  strategies: PlatformStrategies;
 }
 
 // Electron API types exposed through preload
@@ -53,6 +62,11 @@ export interface ElectronAPI {
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   getCheckInterval: () => Promise<number>;
   setCheckInterval: (interval: number) => Promise<void>;
+  
+  // Strategy methods
+  getStrategies: () => Promise<PlatformStrategies>;
+  setStrategies: (strategies: PlatformStrategies) => Promise<void>;
+  setPlatformStrategy: (platform: 'twitch' | 'youtube' | 'kick', strategy: StreamCheckStrategy) => Promise<void>;
   
   // API Credentials methods
   getApiCredentials: () => Promise<ApiCredentials>;

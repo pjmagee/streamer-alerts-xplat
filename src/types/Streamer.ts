@@ -7,6 +7,7 @@ export interface StreamerAccount {
   enabled: boolean;
   lastStatus?: 'live' | 'offline';
   lastChecked?: Date;
+  platformId?: string; // Used for YouTube channel IDs when username is different
 }
 
 export interface StreamerStatus {
@@ -41,6 +42,14 @@ export interface YouTubeChannelResponse {
   }>;
 }
 
+export type StreamCheckStrategy = 'api' | 'scrape';
+
+export interface PlatformStrategies {
+  twitch: StreamCheckStrategy;
+  youtube: StreamCheckStrategy;
+  kick: StreamCheckStrategy;
+}
+
 export interface AppConfig {
   accounts: StreamerAccount[];
   notificationsEnabled: boolean;
@@ -50,6 +59,7 @@ export interface AppConfig {
     height: number;
   };
   apiCredentials: ApiCredentials;
+  strategies: PlatformStrategies;
 }
 
 export interface ApiCredentials {

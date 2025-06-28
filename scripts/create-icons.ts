@@ -1,9 +1,9 @@
-const sharp = require('sharp');
-const fs = require('fs');
-const path = require('path');
+import sharp from 'sharp';
+import * as fs from 'fs';
+import * as path from 'path';
 
-async function createTrayIcon() {
-  const svgBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'tray-icon.svg'));
+async function createTrayIcon(): Promise<void> {
+  const svgBuffer = fs.readFileSync(path.join(__dirname, '..', 'assets', 'tray-icon.svg'));
   
   // Create different sizes for different OS requirements
   const sizes = [16, 32, 64];
@@ -12,7 +12,7 @@ async function createTrayIcon() {
     await sharp(svgBuffer)
       .resize(size, size)
       .png()
-      .toFile(path.join(__dirname, 'assets', `tray-icon-${size}.png`));
+      .toFile(path.join(__dirname, '..', 'assets', `tray-icon-${size}.png`));
     
     console.log(`Created tray-icon-${size}.png`);
   }
@@ -21,7 +21,7 @@ async function createTrayIcon() {
   await sharp(svgBuffer)
     .resize(16, 16)
     .png()
-    .toFile(path.join(__dirname, 'assets', 'tray-icon.png'));
+    .toFile(path.join(__dirname, '..', 'assets', 'tray-icon.png'));
     
   console.log('Created main tray-icon.png');
 }

@@ -29,9 +29,59 @@
                     <input type="number" id="checkInterval" min="1" max="60" value="2">
                 </div>
             </section>
+
+            <section class="strategy-section">
+                <h2>📊 Check Strategy</h2>
+                <p class="strategy-help">Choose how to check stream status for each platform. Scraping requires no login but may be less reliable.</p>
+                
+                <div class="strategy-group">
+                    <div class="strategy-item">
+                        <span class="platform-label">🟣 Twitch:</span>
+                        <div class="strategy-toggle">
+                            <label class="toggle-option">
+                                <input type="radio" name="twitchStrategy" value="scrape" id="twitchScrape">
+                                <span class="toggle-text">Scrape</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" name="twitchStrategy" value="api" id="twitchAPI" checked>
+                                <span class="toggle-text">API</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="strategy-item">
+                        <span class="platform-label">🔴 YouTube:</span>
+                        <div class="strategy-toggle">
+                            <label class="toggle-option">
+                                <input type="radio" name="youtubeStrategy" value="scrape" id="youtubeScrape">
+                                <span class="toggle-text">Scrape</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" name="youtubeStrategy" value="api" id="youtubeAPI" checked>
+                                <span class="toggle-text">API</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="strategy-item">
+                        <span class="platform-label">🟢 Kick:</span>
+                        <div class="strategy-toggle">
+                            <label class="toggle-option">
+                                <input type="radio" name="kickStrategy" value="scrape" id="kickScrape">
+                                <span class="toggle-text">Scrape</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="radio" name="kickStrategy" value="api" id="kickAPI" checked>
+                                <span class="toggle-text">API</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section class="api-section">                
                 <h2>🔑 API Configuration</h2>
-                <p class="api-help">Please log in to each platform you want to monitor.</p>
+                <p class="api-help">Please log in to each platform you want to monitor when using API strategy.</p>
                 
                 <div class="api-group">
                     <h3>🟣 Twitch</h3>

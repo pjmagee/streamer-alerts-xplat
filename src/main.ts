@@ -49,6 +49,14 @@ class StreamerAlertsApp {
         this.createMainWindow();
       }
     });
+
+    app.on('before-quit', async () => {
+      // Clean up resources before quitting
+      if (this.checkInterval) {
+        clearInterval(this.checkInterval);
+      }
+      await this.streamerService.cleanup();
+    });
   }
 
   private setupIPC(): void {
@@ -172,6 +180,7 @@ class StreamerAlertsApp {
         this.mainWindow.hide();
       }
     });
+    
     ipcMain.handle('window:minimize', () => {
       if (this.mainWindow) {
         this.mainWindow.minimize();
@@ -182,6 +191,11 @@ class StreamerAlertsApp {
     ipcMain.handle('shell:openExternal', (_, url: string) => {
       shell.openExternal(url);
     });
+
+    // Strategy IPC handlers
+    ipcMain.handle('config:getStrategies', () => this.configService.getStrategies());
+    ipcMain.handle('config:setStrategies', (_, strategies) => this.configService.setStrategies(strategies));
+    ipcMain.handle('config:setPlatformStrategy', (_, platform, strategy) => this.configService.setPlatformStrategy(platform, strategy));
   }
   private createTray(): void {
     const iconPath = path.join(__dirname, '../assets/tray-icon.png');
@@ -274,11 +288,12 @@ class StreamerAlertsApp {
       },
       {
         label: 'Exit',
-        click: () => {
+        click: async () => {
           (app as any).isQuiting = true;
           if (this.checkInterval) {
             clearInterval(this.checkInterval);
           }
+          await this.streamerService.cleanup();
           app.quit();
         }
       }

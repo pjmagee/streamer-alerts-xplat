@@ -137,3 +137,4 @@ MIT License - see LICENSE file for details.
 
 - [ ] Webhook integration
 - [ ] Stream offline notifications
+- [ ] Find more effecient youtube API Endpoint that does not cost 100 units, but only cost 1 unit to not exceed API quota

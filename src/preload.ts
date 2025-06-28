@@ -18,6 +18,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCheckInterval: () => ipcRenderer.invoke('config:getCheckInterval'),
   setCheckInterval: (interval: number) => ipcRenderer.invoke('config:setCheckInterval', interval),
 
+  // Strategy methods
+  getStrategies: () => ipcRenderer.invoke('config:getStrategies'),
+  setStrategies: (strategies: any) => ipcRenderer.invoke('config:setStrategies', strategies),
+  setPlatformStrategy: (platform: string, strategy: string) => ipcRenderer.invoke('config:setPlatformStrategy', platform, strategy),
+
   // API Credentials methods
   getApiCredentials: () => ipcRenderer.invoke('config:getApiCredentials'),
   setApiCredentials: (credentials: any) => ipcRenderer.invoke('config:setApiCredentials', credentials),  // OAuth methods for all platforms
