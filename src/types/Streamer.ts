@@ -1,4 +1,3 @@
-
 export interface StreamerAccount {
   id: string;
   username: string; // for Twitch, this is the user ID, for YouTube, this is the channel ID

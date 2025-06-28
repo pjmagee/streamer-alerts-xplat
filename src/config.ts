@@ -1,121 +1,136 @@
-/**
- * Application Configuration
- * Desktop applications are "public clients" and should NOT store client secrets
- *
- * Security Implementation by Platform:
- * - Twitch: Device Code Grant Flow (no client secret, OAuth 2.1 compliant)
- * - YouTube: Authorization Code + PKCE (no client secret for Desktop App type, OAuth 2.1 compliant)
- * - Kick: Authorization Code + PKCE + client secret (required by Kick's API)
- *
- * Note: Only Kick requires client_secret. YouTube works with PKCE when configured as Desktop App.
- */
-
-import * as fs from 'fs';
 import * as path from 'path';
+import * as fs from 'fs';
 
-// Determine if we're in a packaged app or development
-// Use Electron's app.isPackaged when available, fallback to process-based detection
-let isPackaged = false;
-try {
-  const { app } = require('electron');
-  isPackaged = app.isPackaged;
-} catch (error) {
-  // Fallback for when Electron is not available (e.g., during build)
-  isPackaged = process.defaultApp === undefined;
-}
-
-// Load the appropriate configuration
-let CONFIG: any;
-
-if (isPackaged) {
-  // Production/Packaged app: try to load config.prod.json from the app bundle
-  // In packaged apps, __dirname points to the app.asar/dist directory
-  const prodConfigPath = path.join(__dirname, 'config.prod.json');
-
-  if (fs.existsSync(prodConfigPath)) {
-    try {
-      const configData = fs.readFileSync(prodConfigPath, 'utf8');
-      CONFIG = JSON.parse(configData);
-    } catch (error) {
-      throw new Error(`
-        ❌ Failed to parse config.prod.json in packaged app!
-
-        Error: ${error instanceof Error ? error.message : 'Unknown error'}
-        Path: ${prodConfigPath}
-      `);
-    }
-  } else {
-    throw new Error(`
-      ❌ Missing config.prod.json in packaged app!
-
-      Expected location: ${prodConfigPath}
-
-      The app was not built properly. This file should be included during the build process.
-      Make sure to run: npm run build:prod before packaging.
-    `);
-  }
-} else {
-  // Development: load from config.local.json in the project root
-  const localConfigPath = path.join(__dirname, '..', 'config.local.json');
-  
-  if (fs.existsSync(localConfigPath)) {
-    try {
-      const configData = fs.readFileSync(localConfigPath, 'utf8');
-      CONFIG = JSON.parse(configData);
-    } catch (error) {
-      throw new Error(`
-        ❌ Failed to parse config.local.json!
-
-        Error: ${error instanceof Error ? error.message : 'Unknown error'}
-        Path: ${localConfigPath}
-        
-        Make sure the JSON file is valid.
-      `);
-    }
-  } else {
-    throw new Error(`
-      ❌ Missing config.local.json file!
-
-      Expected location: ${localConfigPath}
-      
-      Please create config.local.json in the project root with your development credentials.
-      You can copy config.local.example.json as a starting point.
-    `);
-  }
-}
-
-export const EMBEDDED_CREDENTIALS = {
+// Type definitions for configuration
+export interface AppCredentials {
   twitch: {
-    clientId: CONFIG.TWITCH_CLIENT_ID
-  },
+    clientId: string;
+  };
   youtube: {
-    clientId: CONFIG.YOUTUBE_CLIENT_ID,
-  },
+    clientId: string;
+  };
   kick: {
-    clientId: CONFIG.KICK_CLIENT_ID,
-    // Note: Kick unfortunately requires client_secret even with PKCE
-    // This is not ideal for desktop apps but required by their API
-    clientSecret: CONFIG.KICK_CLIENT_SECRET
+    clientId: string;
+    clientSecret: string;
+  };
+}
+
+export interface OAuthEndpoints {
+  twitch: {
+    authorize: string;
+    token: string;
+    revoke: string;
+  };
+  youtube: {
+    authorize: string;
+    token: string;
+    revoke: string;
+  };
+  kick: {
+    authorize: string;
+    token: string;
+    revoke: string;
+  };
+}
+
+export interface OAuthScopes {
+  twitch: string[];
+  youtube: string[];
+  kick: string[];
+}
+
+export interface OAuthConfig {
+  endpoints: OAuthEndpoints;
+  scopes: OAuthScopes;
+}
+
+// Helper function to parse config data
+function parseConfig(configData: Record<string, string>): AppCredentials {
+  return {
+    twitch: {
+      clientId: configData.TWITCH_CLIENT_ID
+    },
+    youtube: {
+      clientId: configData.YOUTUBE_CLIENT_ID
+    },
+    kick: {
+      clientId: configData.KICK_CLIENT_ID,
+      clientSecret: configData.KICK_CLIENT_SECRET
+    }
+  };
+}
+
+// Load configuration based on environment
+function loadConfig(): AppCredentials {
+  // Check if we're in development by looking for webpack/vite dev indicators
+  const isDev = process.env.NODE_ENV === 'development' || 
+                process.env.VITE_DEV_SERVER_URL !== undefined ||
+                __dirname.includes('.vite');
+                
+  const configFile = isDev ? 'config.local.json' : 'config.prod.json';
+  
+  let configPath: string;
+  
+  if (isDev) {
+    // In development, find the project root and use config/ directory
+    // The project root should contain package.json
+    let projectRoot = process.cwd();
+    
+    // If we're in a subdirectory, find the actual project root
+    while (!fs.existsSync(path.join(projectRoot, 'package.json')) && projectRoot !== path.dirname(projectRoot)) {
+      projectRoot = path.dirname(projectRoot);
+    }
+    
+    configPath = path.join(projectRoot, 'config', configFile);
+  } else {
+    // In production, use resources path
+    configPath = path.join(process.resourcesPath, 'config', configFile);
   }
-};
 
-export const OAUTH_CONFIG = {
-  redirectUri: 'https://localhost:8443/callback', // Used by YouTube and Kick only
-  scopes: {
-    twitch: ['user:read:email'], // Required for user identification
-    youtube: ['https://www.googleapis.com/auth/youtube'], // Full scope required for eventType=live searches (readonly scope doesn't support it)
-    kick: ['user:read'] // Required for user identification
-  },
+  try {
+    console.log(`Loading config in ${isDev ? 'development' : 'production'} mode`);
+    console.log(`Config path: ${configPath}`);
+    
+    if (!fs.existsSync(configPath)) {
+      // Try alternative paths as fallback
+      const alternativePaths = [
+        path.join(process.cwd(), 'config', configFile),
+        path.join(__dirname, '..', 'config', configFile),
+        path.join(__dirname, '..', '..', 'config', configFile)
+      ];
+      
+      let foundPath: string | null = null;
+      for (const altPath of alternativePaths) {
+        console.log(`Trying alternative path: ${altPath}`);
+        if (fs.existsSync(altPath)) {
+          foundPath = altPath;
+          console.log(`Found config at: ${altPath}`);
+          break;
+        }
+      }
+      
+      if (!foundPath) {
+        throw new Error(`Configuration file not found: ${configPath} (also tried alternative paths)`);
+      }
+      
+      configPath = foundPath;
+    }
 
-  // OAuth 2.1 endpoints
-  // Note: Twitch uses Device Code Grant Flow (no redirect URI needed)
-  // YouTube and Kick use Authorization Code Flow with PKCE
+    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    return parseConfig(configData);
+  } catch (error) {
+    console.error('Failed to load configuration:', error);
+    throw new Error(`Failed to load configuration from ${configPath}: ${error}`);
+  }
+}
+
+// OAuth configuration (static)
+export const OAUTH_CONFIG: OAuthConfig = {
   endpoints: {
     twitch: {
-      authorize: 'https://id.twitch.tv/oauth2/authorize', // Not used with device code flow
+      authorize: 'https://id.twitch.tv/oauth2/authorize',
       token: 'https://id.twitch.tv/oauth2/token',
-      validate: 'https://id.twitch.tv/oauth2/validate',
-      device: 'https://id.twitch.tv/oauth2/device' // Device code flow endpoint
+      revoke: 'https://id.twitch.tv/oauth2/revoke'
     },
     youtube: {
       authorize: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -123,8 +138,17 @@ export const OAUTH_CONFIG = {
       revoke: 'https://oauth2.googleapis.com/revoke'
     },
     kick: {
-      authorize: 'https://id.kick.com/oauth/authorize',
-      token: 'https://id.kick.com/oauth/token'
+      authorize: 'https://kick.com/oauth2/authorize',
+      token: 'https://kick.com/oauth2/token',
+      revoke: 'https://kick.com/oauth2/revoke'
     }
+  },
+  scopes: {
+    twitch: ['user:read:email'],
+    youtube: ['https://www.googleapis.com/auth/youtube.readonly'],
+    kick: ['user:read']
   }
 };
+
+// Load and export credentials
+export const EMBEDDED_CREDENTIALS: AppCredentials = loadConfig();

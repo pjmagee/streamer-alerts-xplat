@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { StreamerAccount } from './types/Streamer';
+import { PlatformStrategies, ApiCredentials, StreamerAccount } from './types/streamer';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -20,12 +20,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Strategy methods
   getStrategies: () => ipcRenderer.invoke('config:getStrategies'),
-  setStrategies: (strategies: any) => ipcRenderer.invoke('config:setStrategies', strategies),
+  setStrategies: (strategies: PlatformStrategies) => ipcRenderer.invoke('config:setStrategies', strategies),
   setPlatformStrategy: (platform: string, strategy: string) => ipcRenderer.invoke('config:setPlatformStrategy', platform, strategy),
 
   // API Credentials methods
   getApiCredentials: () => ipcRenderer.invoke('config:getApiCredentials'),
-  setApiCredentials: (credentials: any) => ipcRenderer.invoke('config:setApiCredentials', credentials),  // OAuth methods for all platforms
+  setApiCredentials: (credentials: ApiCredentials) => ipcRenderer.invoke('config:setApiCredentials', credentials),  // OAuth methods for all platforms
   authenticateTwitch: () => ipcRenderer.invoke('oauth:authenticateTwitch'),
   logoutTwitch: () => ipcRenderer.invoke('oauth:logoutTwitch'),
   authenticateYouTube: () => ipcRenderer.invoke('oauth:authenticateYouTube'),
@@ -42,7 +42,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 
   // Event listeners
-  onStreamStatusUpdate: (callback: (data: any) => void) => {
+  onStreamStatusUpdate: (callback: (data: import('./types/streamer').StreamerStatus[]) => void) => {
     ipcRenderer.on('stream:statusUpdate', (event, data) => callback(data));
   },
 
