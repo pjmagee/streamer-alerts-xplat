@@ -75,6 +75,19 @@ const config: ForgeConfig = {
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
   ],
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'pjmagee',
+          name: 'streamer-alerts-xplat'
+        },
+        prerelease: false,
+        draft: true
+      }
+    }
+  ]
 };
 
 export default config;
