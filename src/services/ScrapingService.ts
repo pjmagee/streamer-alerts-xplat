@@ -477,23 +477,76 @@ export class ScrapingService {
         waitUntil: 'networkidle',
         timeout: 30000
       });
+
+      // Wait for content to load properly
+      await page.waitForTimeout(3000);
       
-      // Use modern Playwright locator to find LIVE text within the channel content
-      const channelContentLocator = page.locator('div[id="channel-content"]');
-      const liveLocator = channelContentLocator.locator('span').filter({ hasText: 'LIVE' });
-      const isLive = await liveLocator.count() > 0;
+      // Check for LIVE indicator in channel content
+      const channelContent = page.locator('div[id="channel-content"]');
+      let isLive = false;
+      
+      if (await channelContent.count() > 0) {
+        const contentText = await channelContent.textContent();
+        if (contentText && (contentText.includes('LIVE') || contentText.includes('live'))) {
+          isLive = true;
+          console.log(`[Kick] Found LIVE indicator for ${username}`);
+        }
+      }
+
+      // Fallback: try other LIVE selectors
+      if (!isLive) {
+        const selectors = [
+          'span:has-text("LIVE")',
+          'div:has-text("LIVE")',
+          '[class*="live"]'
+        ];
+
+        for (const selector of selectors) {
+          try {
+            const elements = page.locator(selector);
+            const count = await elements.count();
+            
+            if (count > 0) {
+              for (let i = 0; i < count; i++) {
+                const element = elements.nth(i);
+                const text = await element.textContent();
+                if (text && (text.includes('LIVE') || text.includes('live'))) {
+                  isLive = true;
+                  console.log(`[Kick] Found LIVE indicator for ${username} with selector: ${selector}`);
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            // Continue with next selector
+          }
+          
+          if (isLive) break;
+        }
+      }
 
       let title = '';
       if (isLive) {
-        // Extract title using modern locator API
-        const titleLocator = page.locator('span[data-testid="livestream-title"]');
-        if (await titleLocator.count() > 0) {
-          title = await titleLocator.textContent() || '';
-          title = title.trim();
-        }
+        // Try to extract title
+        const titleSelectors = [
+          'span[data-testid="livestream-title"]',
+          '[data-testid*="title"]'
+        ];
 
-        if (title) {
-          console.log(`[Kick] Extracted title: ${title}`);
+        for (const titleSelector of titleSelectors) {
+          try {
+            const titleLocator = page.locator(titleSelector);
+            if (await titleLocator.count() > 0) {
+              title = await titleLocator.first().textContent() || '';
+              title = title.trim();
+              if (title) {
+                console.log(`[Kick] Extracted title: ${title}`);
+                break;
+              }
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
         }
       }
 
