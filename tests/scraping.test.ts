@@ -5,7 +5,7 @@ import { ScrapingService } from '../src/services/scraping.service';
 test('Playwright-based scraping returns proper structure', async () => {
   const scrapingService = new ScrapingService();
   try {
-    const twitch = await scrapingService.checkTwitchStream('zackrawrr');
+    const twitch = await scrapingService.checkTwitchStream('esfandtv');
     console.log('Twitch:', twitch);
     assert.strictEqual(typeof twitch.isLive, 'boolean');
     assert.strictEqual(typeof twitch.title, 'string');
@@ -15,7 +15,7 @@ test('Playwright-based scraping returns proper structure', async () => {
     assert.strictEqual(typeof youtube.isLive, 'boolean');
     assert.strictEqual(typeof youtube.title, 'string');
 
-    const kick = await scrapingService.checkKickStream('xqc');
+    const kick = await scrapingService.checkKickStream('esfandtv');
     console.log('Kick:', kick);
     assert.strictEqual(typeof kick.isLive, 'boolean');
     assert.strictEqual(typeof kick.title, 'string');

@@ -100,15 +100,10 @@ export class ScrapingService {
   public async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string }> {
     try {
       const page = await this.getTwitchPage();
-
-      await page.goto(`https://www.twitch.tv/${username}`, { waitUntil: 'networkidle', timeout: 30000 });
-      // Allow client-side rendering
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
-      // Check for live badge or LIVE text
-      const isLive = await page.locator('span[class*="CoreText"]:has-text("LIVE")')
-        .first()
-        .isVisible()
+      await page.goto(`https://www.twitch.tv/${username}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      const isLive = await page.locator('span[class*="CoreText"]', { hasText: 'LIVE' })
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => true)
         .catch(() => false);
 
       let title = '';
