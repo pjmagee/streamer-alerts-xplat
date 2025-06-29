@@ -1,6 +1,0 @@
-{
-  "TWITCH_CLIENT_ID": "your_twitch_client_id_here",
-  "YOUTUBE_CLIENT_ID": "your_youtube_client_id_here",
-  "KICK_CLIENT_ID": "your_kick_client_id_here",
-  "KICK_CLIENT_SECRET": "your_kick_client_secret_here"
-}

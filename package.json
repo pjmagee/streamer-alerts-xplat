@@ -17,8 +17,6 @@
     "cleanup-data": "tsx scripts/cleanup-data.ts"
   },
   "keywords": [
-    "electron",
-    "typescript",
     "twitch",
     "youtube",
     "kick",
