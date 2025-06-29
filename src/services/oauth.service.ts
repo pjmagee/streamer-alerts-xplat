@@ -4,6 +4,7 @@ import { ConfigService } from './config.service';
 import { createHash, randomBytes } from 'crypto';
 import * as http from 'http';
 import * as url from 'url';
+import logger from '../utils/logger';
 
 export class OAuthService {
   private configService: ConfigService;
@@ -63,9 +64,9 @@ export class OAuthService {
       const { device_code, verification_uri, expires_in, interval } = deviceData;
 
       // Step 2: Open browser directly - no popup needed since code is prefilled
-      console.log('\n🔥 TWITCH AUTHENTICATION');
-      console.log(`📱 Opening browser for Twitch authorization...`);
-      console.log(`⏰ Expires in: ${Math.floor(expires_in / 60)} minutes`);
+      logger.info('\n🔥 TWITCH AUTHENTICATION');
+      logger.info(`📱 Opening browser for Twitch authorization...`);
+      logger.info(`⏰ Expires in: ${Math.floor(expires_in / 60)} minutes`);
 
       //const { shell } = require('electron');
 
@@ -77,7 +78,7 @@ export class OAuthService {
       return tokenResult;
 
     } catch (error) {
-      console.error('Twitch OAuth error:', error);
+      logger.error('Twitch OAuth error:', error);
       return false;
     }
   }
@@ -144,7 +145,7 @@ export class OAuthService {
           throw new Error(`Token request failed: ${tokenResponse.statusText}`);
         }
       } catch (error) {
-        console.error('Error polling for token:', error);
+        logger.error('Error polling for token:', error);
         return false;
       }
     }
@@ -185,13 +186,13 @@ export class OAuthService {
         const success = await this.exchangeYouTubeCode(code, codeVerifier, redirectUri);
         return success;
       } catch (error) {
-        console.error('YouTube OAuth error:', error);
+        logger.error('YouTube OAuth error:', error);
         return false;
       } finally {
         server.close();
       }
     } catch (error) {
-      console.error('YouTube OAuth error:', error);
+      logger.error('YouTube OAuth error:', error);
       return false;
     }
   }
@@ -206,12 +207,12 @@ export class OAuthService {
         code_verifier: codeVerifier, // PKCE verification
       });
 
-      console.log('YouTube token exchange request:');
-      console.log('Endpoint:', OAUTH_CONFIG.endpoints.youtube.token);
-      console.log('Client ID:', EMBEDDED_CREDENTIALS.youtube.clientId);
-      console.log('Redirect URI:', redirectUri);
-      console.log('Code length:', code.length);
-      console.log('Code verifier length:', codeVerifier.length);
+      logger.debug('YouTube token exchange request:');
+      logger.debug('Endpoint:', OAUTH_CONFIG.endpoints.youtube.token);
+      logger.debug('Client ID:', EMBEDDED_CREDENTIALS.youtube.clientId);
+      logger.debug('Redirect URI:', redirectUri);
+      logger.debug('Code length:', code.length);
+      logger.debug('Code verifier length:', codeVerifier.length);
 
       const tokenResponse = await fetch(OAUTH_CONFIG.endpoints.youtube.token, {
         method: 'POST',
@@ -260,7 +261,7 @@ export class OAuthService {
 
       return true;
     } catch (error) {
-      console.error('Error exchanging YouTube code:', error);
+      logger.error('Error exchanging YouTube code:', error);
       return false;
     }
   }
@@ -302,14 +303,14 @@ export class OAuthService {
         const success = await this.exchangeKickCode(code, codeVerifier, redirectUri);
         return success;
       } catch (error) {
-        console.error('Kick OAuth error:', error);
+        logger.error('Kick OAuth error:', error);
         return false;
       } finally {
         // Ensure server is closed
         server.close();
       }
     } catch (error) {
-      console.error('Kick OAuth error:', error);
+      logger.error('Kick OAuth error:', error);
       return false;
     }
   }
@@ -350,21 +351,21 @@ export class OAuthService {
       const cleanAccessToken = tokenData.access_token?.trim();
 
       // Debug: Log token info (without exposing the full token)
-      console.log(`Kick token received: ${cleanAccessToken?.length} chars, clean: ${cleanAccessToken === tokenData.access_token}`);
-      console.log('Kick token response keys:', Object.keys(tokenData));
+      logger.debug(`Kick token received: ${cleanAccessToken?.length} chars, clean: ${cleanAccessToken === tokenData.access_token}`);
+      logger.debug('Kick token response keys:', Object.keys(tokenData));
 
       // Try to get user info from multiple possible endpoints
       let userData = null;
       let userEndpoint = '';
 
       // Debug: Check token format and add extra headers
-      console.log('Kick API Debug - About to call user endpoint');
-      console.log('Token length:', cleanAccessToken?.length);
+      logger.debug('Kick API Debug - About to call user endpoint');
+      logger.debug('Token length:', cleanAccessToken?.length);
 
       // First, try the public API user endpoint (correct Kick API)
       try {
         userEndpoint = 'https://api.kick.com/public/v1/users';
-        console.log('Making request to:', userEndpoint);
+        logger.debug('Making request to:', userEndpoint);
         
         const userResponse = await fetch(userEndpoint, {
           headers: {
@@ -375,11 +376,11 @@ export class OAuthService {
           },
         });
 
-        console.log('User API response status:', userResponse.status);
+        logger.debug('User API response status:', userResponse.status);
 
         if (userResponse.ok) {
           const responseData = await userResponse.json();
-          console.log('Kick API response:', responseData);
+          logger.debug('Kick API response:', responseData);
           
           // The Kick API returns data in format: { data: [{ user_id, name, email, profile_picture }] }
           if (responseData.data && responseData.data.length > 0) {
@@ -392,7 +393,7 @@ export class OAuthService {
               profile_picture: user.profile_picture
             };
           } else {
-            console.error('Kick API returned empty data array');
+            logger.error('Kick API returned empty data array');
           }
         } else {
           let errorDetails;
@@ -402,21 +403,21 @@ export class OAuthService {
           } catch {
             errorDetails = await userResponse.text();
           }
-          console.error(`Kick user API error (${userEndpoint}): ${userResponse.status} ${userResponse.statusText} - ${errorDetails}`);
+          logger.error(`Kick user API error (${userEndpoint}): ${userResponse.status} ${userResponse.statusText} - ${errorDetails}`);
         }
       } catch (error) {
-        console.error(`Error calling ${userEndpoint}:`, error);
+        logger.error(`Error calling ${userEndpoint}:`, error);
       }
 
       // If that failed, check if token response includes user info
       if (!userData && tokenData.user) {
-        console.log('Using user data from token response');
+        logger.debug('Using user data from token response');
         userData = tokenData.user;
       }
 
       // If still no user data, try without authentication (some APIs provide this)
       if (!userData) {
-        console.log('No user data available - creating minimal credentials');
+        logger.debug('No user data available - creating minimal credentials');
         // For now, we'll store the token without user details
         // The user can still use the API, we just won't have display name
         userData = {
@@ -441,7 +442,7 @@ export class OAuthService {
 
       return true;
     } catch (error) {
-      console.error('Error exchanging Kick code:', error);
+      logger.error('Error exchanging Kick code:', error);
       return false;
     }
   }
@@ -486,7 +487,7 @@ export class OAuthService {
 
       return true;
     } catch (error) {
-      console.error('Error refreshing Twitch token:', error);
+      logger.error('Error refreshing Twitch token:', error);
       return false;
     }
   }
@@ -526,7 +527,7 @@ export class OAuthService {
 
       return true;
     } catch (error) {
-      console.error('Error refreshing YouTube token:', error);
+      logger.error('Error refreshing YouTube token:', error);
       return false;
     }
   }
@@ -572,7 +573,7 @@ export class OAuthService {
 
       return true;
     } catch (error) {
-      console.error('Error refreshing Kick token:', error);
+      logger.error('Error refreshing Kick token:', error);
       return false;
     }
   }
@@ -595,7 +596,7 @@ export class OAuthService {
     const buffer = 5 * 60 * 1000; // 5 minutes
 
     if (now >= (expiryTime - buffer)) {
-      console.log(`${platform} token is expired, attempting refresh...`);
+      logger.info(`${platform} token is expired, attempting refresh...`);
 
       switch (platform) {
         case 'twitch':
@@ -626,7 +627,7 @@ export class OAuthService {
           method: 'POST',
         });
       } catch (error) {
-        console.warn('Failed to revoke Twitch token:', error);
+        logger.warn('Failed to revoke Twitch token:', error);
       }
     }
 
@@ -649,7 +650,7 @@ export class OAuthService {
           }),
         });
       } catch (error) {
-        console.warn('Failed to revoke YouTube token:', error);
+        logger.warn('Failed to revoke YouTube token:', error);
       }
     }
 

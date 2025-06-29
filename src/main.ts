@@ -7,6 +7,7 @@ import {
   OAuthService
 } from './services';
 import { StreamerStatus, StreamerAccount } from './types/streamer';
+import logger from './utils/logger';
 
 // Custom property to track if app is quitting
 let isAppQuitting = false;
@@ -90,7 +91,7 @@ class StreamerAlertsApp {
             consecutiveOfflineChecks: 0
           });
         }
-        console.log('Stream statuses reset on app close');
+        logger.info('Stream statuses reset on app close');
       }
       
       await this.streamerService.cleanup();
@@ -135,7 +136,7 @@ class StreamerAlertsApp {
           return { success: false, error: 'Authentication failed' };
         }
       } catch (error) {
-        console.error('Twitch OAuth error:', error);
+        logger.error('Twitch OAuth error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
     });
@@ -145,7 +146,7 @@ class StreamerAlertsApp {
         await this.oauthService.logoutTwitch();
         return { success: true };
       } catch (error) {
-        console.error('Twitch logout error:', error);
+        logger.error('Twitch logout error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
     });
@@ -160,7 +161,7 @@ class StreamerAlertsApp {
           return { success: false, error: 'Authentication failed' };
         }
       } catch (error) {
-        console.error('YouTube OAuth error:', error);
+        logger.error('YouTube OAuth error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
     });
@@ -170,7 +171,7 @@ class StreamerAlertsApp {
         await this.oauthService.logoutYouTube();
         return { success: true };
       } catch (error) {
-        console.error('YouTube logout error:', error);
+        logger.error('YouTube logout error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
     });
@@ -185,7 +186,7 @@ class StreamerAlertsApp {
           return { success: false, error: 'Authentication failed' };
         }
       } catch (error) {
-        console.error('Kick OAuth error:', error);
+        logger.error('Kick OAuth error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
     });
@@ -195,7 +196,7 @@ class StreamerAlertsApp {
         await this.oauthService.logoutKick();
         return { success: true };
       } catch (error) {
-        console.error('Kick logout error:', error);
+        logger.error('Kick logout error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
     });
@@ -246,12 +247,10 @@ class StreamerAlertsApp {
     }
 
     const iconPath = getIconPath(iconName);
-    console.log('Loading tray icon from:', iconPath);
 
     let trayIcon: Electron.NativeImage;
     try {
       trayIcon = nativeImage.createFromPath(iconPath);
-      console.log('Tray icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
 
       // Platform-specific adjustments
       if (process.platform === 'darwin') {
@@ -263,31 +262,31 @@ class StreamerAlertsApp {
         throw new Error('Icon is empty');
       }
     } catch (error) {
-      console.warn('Could not load tray icon, trying PNG fallback:', error);
+      logger.warn('Could not load tray icon, trying PNG fallback:', error);
       // Try PNG fallback for Windows
       try {
         const fallbackPath = getIconPath(process.platform === 'win32' ? 'tray-icon-16.png' : 'tray-icon.png');
-        console.log('Trying fallback icon:', fallbackPath);
+        logger.debug('Trying fallback icon:', fallbackPath);
         trayIcon = nativeImage.createFromPath(fallbackPath);
-        console.log('Fallback icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
+        logger.debug('Fallback icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
         
         if (trayIcon.isEmpty()) {
           throw new Error('Fallback icon is also empty');
         }
       } catch (fallbackError) {
-        console.error('Could not load fallback tray icon, trying main icon.ico:', fallbackError);
+        logger.error('Could not load fallback tray icon, trying main icon.ico:', fallbackError);
         // Last resort - try main icon.ico
         try {
           const mainIconPath = getIconPath('icon.ico');
-          console.log('Trying main icon.ico:', mainIconPath);
+          logger.debug('Trying main icon.ico:', mainIconPath);
           trayIcon = nativeImage.createFromPath(mainIconPath);
-          console.log('Main icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
+          logger.debug('Main icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
           
           if (trayIcon.isEmpty()) {
             throw new Error('Main icon is also empty');
           }
         } catch (mainIconError) {
-          console.error('Could not load any tray icon:', mainIconError);
+          logger.error('Could not load any tray icon:', mainIconError);
           // Use an empty image as last resort
           trayIcon = nativeImage.createEmpty();
         }
@@ -323,12 +322,11 @@ class StreamerAlertsApp {
     }
 
     const iconPath = getIconPath(iconName);
-    console.log('Updating tray icon to:', iconPath, 'hasLiveStreamers:', hasLiveStreamers);
+    logger.debug('Updating tray icon to:', iconPath, 'hasLiveStreamers:', hasLiveStreamers);
 
     let trayIcon: Electron.NativeImage;
     try {
-      trayIcon = nativeImage.createFromPath(iconPath);
-      console.log('Updated tray icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
+      trayIcon = nativeImage.createFromPath(iconPath);      
 
       // Platform-specific adjustments
       if (process.platform === 'darwin') {
@@ -344,12 +342,12 @@ class StreamerAlertsApp {
           ? 'Streamer Alerts - Streamers are live!'
           : 'Streamer Alerts - Monitor your favorite streamers';
         this.tray.setToolTip(tooltip);
-        console.log('Tray icon updated successfully');
+        logger.debug('Tray icon updated successfully');
       } else {
-        console.warn('Tray icon is empty after loading');
+        logger.warn('Tray icon is empty after loading');
       }
     } catch (error) {
-      console.warn('Could not update tray icon:', error);
+      logger.warn('Could not update tray icon:', error);
     }
   }
 
@@ -442,13 +440,8 @@ class StreamerAlertsApp {
       clearInterval(this.checkInterval);
     }
 
-    // Initial check for all accounts
     await this.checkStreamStatus();
-
-    // Set up smart polling timer
     this.scheduleNextCheck();
-
-    console.log('Smart polling engine started');
   }
 
   private scheduleNextCheck(): void {
@@ -481,11 +474,21 @@ class StreamerAlertsApp {
       this.scheduleNextCheck();
     }, delay);
 
-    console.log(`Next check scheduled in ${Math.round(delay / 1000)} seconds`);
+    const nextCheckMinutes = Math.round(delay / 1000 / 60);
+    const nextCheckSeconds = Math.round(delay / 1000);
+    
+    if (nextCheckMinutes > 0) {
+      logger.info(`⏳ Next check cycle scheduled in ${nextCheckMinutes} minutes`);
+    } else {
+      logger.info(`⏳ Next check cycle scheduled in ${nextCheckSeconds} seconds`);
+    }
   }
 
   private async checkStreamStatus(): Promise<void> {
     if (!this.notificationsEnabled) return;
+
+    logger.info('\n═══════════════════════════════════════════════════════════');
+    logger.info('🚀 Starting stream status check cycle...');
 
     try {
       const accounts = this.configService.getAccounts();
@@ -502,12 +505,31 @@ class StreamerAlertsApp {
       });
 
       if (accountsToCheck.length === 0) {
-        console.log('No accounts need checking at this time');
+        logger.info('No accounts need checking at this time');
         return;
       }
 
-      console.log(`Checking ${accountsToCheck.length} accounts`);
+      logger.info(`🔍 Checking ${accountsToCheck.length} accounts for stream status...`);
+      
+      // Log which accounts are being checked
+      for (const account of accountsToCheck) {
+        const timeSinceLastCheck = account.lastChecked 
+          ? Math.round((now - new Date(account.lastChecked).getTime()) / 1000 / 60)
+          : 'never';
+        logger.info(`  📺 ${account.displayName || account.username} (${account.platform}) - Last checked: ${timeSinceLastCheck === 'never' ? 'never' : `${timeSinceLastCheck}min ago`}`);
+      }
+      
       const statusUpdates = await this.streamerService.checkMultipleStreamers(accountsToCheck);
+
+      // Log results for each checked account
+      logger.info('📊 Check results:');
+      for (const update of statusUpdates) {
+        const statusIcon = update.isLive ? '🟢 LIVE' : '🔴 OFFLINE';
+        const justWentLiveText = update.justWentLive ? ' 🎉 JUST WENT LIVE!' : '';
+        const titleText = update.title ? ` - "${update.title}"` : '';
+        
+        logger.info(`  ${statusIcon} ${update.displayName} (${update.platform})${titleText}${justWentLiveText}`);
+      }
 
       // Update account statuses and calculate next check times
       for (const update of statusUpdates) {
@@ -530,14 +552,19 @@ class StreamerAlertsApp {
             accountUpdate.nextCheckTime = undefined;
             accountUpdate.currentCheckInterval = undefined;
             accountUpdate.consecutiveOfflineChecks = 0;
+            logger.info(`  ⏸️  ${update.displayName}: Online checks disabled - no next check scheduled`);
           } else {
             // Use online check interval
-            accountUpdate.nextCheckTime = this.calculateNextCheckTime(
+            const nextCheck = this.calculateNextCheckTime(
               smartConfig.onlineCheckInterval,
               smartConfig.jitterPercentage
             );
+            accountUpdate.nextCheckTime = nextCheck;
             accountUpdate.currentCheckInterval = smartConfig.onlineCheckInterval;
             accountUpdate.consecutiveOfflineChecks = 0;
+            
+            const nextCheckMinutes = Math.round((nextCheck - now) / 1000 / 60);
+            logger.info(`  ⏰ ${update.displayName}: Next online check in ~${nextCheckMinutes} minutes`);
           }
         } else {
           // Stream is offline
@@ -552,9 +579,14 @@ class StreamerAlertsApp {
             );
           }
 
-          accountUpdate.nextCheckTime = this.calculateNextCheckTime(interval, smartConfig.jitterPercentage);
+          const nextCheck = this.calculateNextCheckTime(interval, smartConfig.jitterPercentage);
+          accountUpdate.nextCheckTime = nextCheck;
           accountUpdate.currentCheckInterval = interval;
           accountUpdate.consecutiveOfflineChecks = consecutiveOffline;
+          
+          const nextCheckMinutes = Math.round((nextCheck - now) / 1000 / 60);
+          const intervalMinutes = Math.round(interval / 1000 / 60);
+          logger.info(`  ⏰ ${update.displayName}: Next offline check in ~${nextCheckMinutes} minutes (interval: ${intervalMinutes}min, attempt #${consecutiveOffline})`);
         }
 
         this.configService.updateAccount(account.id, accountUpdate);
@@ -580,8 +612,18 @@ class StreamerAlertsApp {
       if (this.mainWindow) {
         this.mainWindow.webContents.send('stream:statusUpdate', statusUpdates);
       }
+      
+      // Log summary
+      const liveCount = statusUpdates.filter(u => u.isLive).length;
+      const offlineCount = statusUpdates.filter(u => !u.isLive).length;
+      const newlyLiveCount = statusUpdates.filter(u => u.justWentLive).length;
+      
+      logger.info(`📈 Summary: ${liveCount} live, ${offlineCount} offline${newlyLiveCount > 0 ? `, ${newlyLiveCount} just went live` : ''}`);
+      logger.info('═══════════════════════════════════════════════════════════\n');
+      
     } catch (error) {
-      console.error('Error checking stream status:', error);
+      logger.error('❌ Error checking stream status:', error);
+      logger.info('═══════════════════════════════════════════════════════════\n');
     }
   }
 
@@ -612,7 +654,7 @@ class StreamerAlertsApp {
   }
 
   private async validateStoredTokens(): Promise<void> {
-    console.log('Validating stored OAuth tokens on app startup...');
+    logger.info('Validating stored OAuth tokens on app startup...');
 
     try {
       const credentials = this.configService.getApiCredentials();
@@ -622,37 +664,37 @@ class StreamerAlertsApp {
       if (credentials.twitch.isLoggedIn && strategies.twitch === 'api') {
         const twitchValid = await this.oauthService.validateAndRefreshToken('twitch');
         if (!twitchValid) {
-          console.log('Twitch token validation failed - user will need to re-authenticate');
+          logger.warn('Twitch token validation failed - user will need to re-authenticate');
         } else {
-          console.log('Twitch token validated successfully');
+          logger.info('Twitch token validated successfully');
         }
       } else if (strategies.twitch === 'scrape') {
-        console.log('Twitch strategy is set to scrape - skipping token validation');
+        logger.info('Twitch strategy is set to scrape - skipping token validation');
       }
 
       if (credentials.youtube.isLoggedIn && strategies.youtube === 'api') {
         const youtubeValid = await this.oauthService.validateAndRefreshToken('youtube');
         if (!youtubeValid) {
-          console.log('YouTube token validation failed - user will need to re-authenticate');
+          logger.warn('YouTube token validation failed - user will need to re-authenticate');
         } else {
-          console.log('YouTube token validated successfully');
+          logger.info('YouTube token validated successfully');
         }
       } else if (strategies.youtube === 'scrape') {
-        console.log('YouTube strategy is set to scrape - skipping token validation');
+        logger.info('YouTube strategy is set to scrape - skipping token validation');
       }
 
       if (credentials.kick.isLoggedIn && strategies.kick === 'api') {
         const kickValid = await this.oauthService.validateAndRefreshToken('kick');
         if (!kickValid) {
-          console.log('Kick token validation failed - user will need to re-authenticate');
+          logger.warn('Kick token validation failed - user will need to re-authenticate');
         } else {
-          console.log('Kick token validated successfully');
+          logger.info('Kick token validated successfully');
         }
       } else if (strategies.kick === 'scrape') {
-        console.log('Kick strategy is set to scrape - skipping token validation');
+        logger.info('Kick strategy is set to scrape - skipping token validation');
       }
     } catch (error) {
-      console.error('Error validating stored tokens:', error);
+      logger.error('Error validating stored tokens:', error);
     }
   }
 

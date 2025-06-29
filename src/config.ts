@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import logger from './utils/logger';
 
 // Type definitions for configuration
 export interface AppCredentials {
@@ -88,8 +89,8 @@ function loadConfig(): AppCredentials {
   }
 
   try {
-    console.log(`Loading config in ${isDev ? 'development' : 'production'} mode`);
-    console.log(`Config path: ${configPath}`);
+    logger.info(`Loading config in ${isDev ? 'development' : 'production'} mode`);
+    logger.info(`Config path: ${configPath}`);
     
     if (!fs.existsSync(configPath)) {
       // Try alternative paths as fallback
@@ -101,10 +102,10 @@ function loadConfig(): AppCredentials {
       
       let foundPath: string | null = null;
       for (const altPath of alternativePaths) {
-        console.log(`Trying alternative path: ${altPath}`);
+        logger.debug(`Trying alternative path: ${altPath}`);
         if (fs.existsSync(altPath)) {
           foundPath = altPath;
-          console.log(`Found config at: ${altPath}`);
+          logger.info(`Found config at: ${altPath}`);
           break;
         }
       }
@@ -119,7 +120,7 @@ function loadConfig(): AppCredentials {
     const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     return parseConfig(configData);
   } catch (error) {
-    console.error('Failed to load configuration:', error);
+    logger.error('Failed to load configuration:', error);
     throw new Error(`Failed to load configuration from ${configPath}: ${error}`);
   }
 }

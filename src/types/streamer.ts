@@ -7,8 +7,6 @@ export interface StreamerAccount {
   lastStatus?: 'live' | 'offline';
   lastChecked?: Date;
   platformId?: string; // Used for YouTube channel IDs when username is different
-  
-  // Smart checking properties
   consecutiveOfflineChecks?: number; // Number of consecutive offline checks
   nextCheckTime?: number; // When to check this channel next (timestamp)
   currentCheckInterval?: number; // Current interval for this specific channel (in ms)

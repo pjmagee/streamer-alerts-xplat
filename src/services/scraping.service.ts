@@ -1,4 +1,5 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
+import logger from '../utils/logger';
 
 export class ScrapingService {
   private browser: Browser | null = null;
@@ -47,10 +48,6 @@ export class ScrapingService {
     }
 
     const page = await this.context.newPage();
-
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'en-US,en;q=0.9'
-    });
 
     return page;
   }
@@ -114,7 +111,7 @@ export class ScrapingService {
 
       return { isLive, title };
     } catch (error) {
-      console.error('Error scraping Twitch stream:', error);
+      logger.error('Error scraping Twitch stream:', error);
       await this.resetTwitchPage();
       return { isLive: false, title: '' };
     }
@@ -171,7 +168,7 @@ export class ScrapingService {
       }
       return { isLive, title };
     } catch (error) {
-      console.error('Error scraping YouTube stream:', error);
+      logger.error('Error scraping YouTube stream:', error);
       await this.resetYouTubePage();
       return { isLive: false, title: '' };
     }
@@ -204,7 +201,7 @@ export class ScrapingService {
 
       return { isLive, title };
     } catch (error) {
-      console.error('Error scraping Kick stream:', error);
+      logger.error('Error scraping Kick stream:', error);
       await this.resetKickPage();
       return { isLive: false, title: '' };
     }
@@ -236,7 +233,7 @@ export class ScrapingService {
         this.browser = null;
       }
     } catch (error) {
-      console.error('Error during ScrapingService cleanup:', error);
+      logger.error('Error during ScrapingService cleanup:', error);
     }
   }
 }

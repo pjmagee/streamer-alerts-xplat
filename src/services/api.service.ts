@@ -2,6 +2,7 @@ import { TwitchStreamResponse } from '../types/streamer';
 import { ConfigService } from './config.service';
 import { OAuthService } from './oauth.service';
 import { EMBEDDED_CREDENTIALS } from '../config';
+import logger from '../utils/logger';
 
 export class ApiService {
   private configService: ConfigService;
@@ -17,7 +18,7 @@ export class ApiService {
     
     // Check if user is logged in with Twitch
     if (!credentials.twitch.isLoggedIn || !credentials.twitch.accessToken) {
-      console.info(`Skipping Twitch check for ${username}: User not authenticated with Twitch`);
+      logger.debug(`Skipping Twitch check for ${username}: User not authenticated with Twitch`);
       throw new Error('AUTHENTICATION_REQUIRED');
     }
 
@@ -68,7 +69,7 @@ export class ApiService {
 
       return { isLive: false, title: '' };
     } catch (error) {
-      console.error('Error checking Twitch stream:', error);
+      logger.error('Error checking Twitch stream:', error);
       
       // If it's an authentication error, mark the user as not logged in
       if (error instanceof Error && error.message.includes('authentication')) {
@@ -83,7 +84,7 @@ export class ApiService {
     const credentials = this.configService.getApiCredentials();
     
     if (!credentials.youtube.isLoggedIn || !credentials.youtube.accessToken) {
-      console.info(`Skipping YouTube check for ${channelId}: User not authenticated with YouTube`);
+      logger.debug(`Skipping YouTube check for ${channelId}: User not authenticated with YouTube`);
       throw new Error('AUTHENTICATION_REQUIRED');
     }
 
@@ -126,7 +127,7 @@ export class ApiService {
           throw new Error('YouTube authentication failed. Please re-authenticate with YouTube.');
         } else if (response.status === 403) {
           // Forbidden - could be quota exceeded, insufficient permissions, or API key issues
-          console.error('YouTube API 403 error details:', responseData);
+          logger.error('YouTube API 403 error details:', responseData);
           
           if (responseData?.error?.message?.includes('quota')) {
             throw new Error('YouTube API quota exceeded. Please try again later.');
@@ -136,7 +137,7 @@ export class ApiService {
             throw new Error(`YouTube API access denied: ${responseData?.error?.message || 'Unknown error'}`);
           }
         } else if (response.status === 404) {
-          console.warn(`YouTube channel ${channelId} not found`);
+          logger.warn(`YouTube channel ${channelId} not found`);
           return { isLive: false, title: '' };
         }
         
@@ -154,7 +155,7 @@ export class ApiService {
 
       return { isLive: false, title: '' };
     } catch (error) {
-      console.error('Error checking YouTube stream:', error);
+      logger.error('Error checking YouTube stream:', error);
       
       // Handle different types of API errors
       if (error instanceof Error && error.message.includes('authentication')) {
@@ -164,7 +165,7 @@ export class ApiService {
       }
       
       // For other errors, return offline status but don't throw
-      console.warn(`Failed to check YouTube stream status for ${channelId}:`, error);
+      logger.warn(`Failed to check YouTube stream status for ${channelId}:`, error);
       return { isLive: false, title: '' };
     }
   }
@@ -173,7 +174,7 @@ export class ApiService {
     const credentials = this.configService.getApiCredentials();
     
     if (!credentials.kick.isLoggedIn || !credentials.kick.accessToken) {
-      console.info(`Skipping Kick check for ${username}: User not authenticated with Kick`);
+      logger.debug(`Skipping Kick check for ${username}: User not authenticated with Kick`);
       throw new Error('AUTHENTICATION_REQUIRED');
     }
 
@@ -231,7 +232,7 @@ export class ApiService {
 
       return { isLive: false, title: '' };
     } catch (error) {      
-      console.error('Error checking Kick stream:', error);
+      logger.error('Error checking Kick stream:', error);
       
       // If it's an authentication error, mark the user as not logged in
       if (error instanceof Error && error.message.includes('authentication')) {

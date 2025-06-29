@@ -3,6 +3,7 @@ import { ConfigService } from './config.service';
 import { OAuthService } from './oauth.service';
 import { ScrapingService } from './scraping.service';
 import { ApiService } from './api.service';
+import logger from '../utils/logger';
 
 export class StreamerService {
   private configService: ConfigService;
@@ -27,10 +28,10 @@ export class StreamerService {
       } catch (error) {
         if (error instanceof Error && error.message === 'AUTHENTICATION_REQUIRED') {
           // Authentication errors are expected when user hasn't logged in yet
-          console.debug(`Skipping ${account.username} on ${account.platform}: Authentication required`);
+          logger.debug(`Skipping ${account.username} on ${account.platform}: Authentication required`);
         } else {
           // Log actual errors
-          console.error(`Error checking ${account.username} on ${account.platform}:`, error);
+          logger.error(`Error checking ${account.username} on ${account.platform}:`, error);
         }
         
         // Return offline status on error
@@ -55,6 +56,8 @@ export class StreamerService {
     
     const strategies = this.configService.getStrategies();
     const strategy = strategies[account.platform];
+
+    logger.info(`🔎 Checking ${account.displayName || account.username} on ${account.platform} (${strategy} strategy)`);
 
     switch (account.platform) {
       case 'twitch':
@@ -99,6 +102,14 @@ export class StreamerService {
     // Update account status
     account.lastStatus = isLive ? 'live' : 'offline';
     account.lastChecked = new Date();
+
+    // Log the individual check result
+    const statusIcon = isLive ? '✅' : '❌';
+    const statusText = isLive ? 'LIVE' : 'OFFLINE';
+    const titleInfo = title ? ` (${title})` : '';
+    const transitionInfo = justWentLive ? ' [JUST WENT LIVE!]' : wasLive && !isLive ? ' [WENT OFFLINE]' : '';
+    
+    logger.info(`    ${statusIcon} ${account.displayName || account.username}: ${statusText}${titleInfo}${transitionInfo}`);
 
     return {
       account,

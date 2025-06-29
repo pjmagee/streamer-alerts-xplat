@@ -59,6 +59,7 @@
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^8.1.0",
     "playwright": "^1.53.1",
-    "sharp": "^0.34.2"
+    "sharp": "^0.34.2",
+    "winston": "^3.17.0"
   }
 }

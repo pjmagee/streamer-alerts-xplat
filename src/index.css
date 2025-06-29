@@ -432,25 +432,20 @@ main {
     font-size: 13px;
 }
 
-.accounts-list {
-    display: grid;
-    gap: 10px;
-}
-
+/* Account item styling with improved layout */
 .account-item {
     background: #f7fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    border-radius: 8px;
+    padding: 16px;
     transition: all 0.2s ease;
+    margin-bottom: 12px;
 }
 
 .account-item:hover {
     border-color: #667eea;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
 }
 
 .account-item.enabled {
@@ -459,6 +454,7 @@ main {
 
 .account-item.disabled {
     opacity: 0.6;
+    background: #f1f5f9;
 }
 
 .account-item.disabled .account-details {
@@ -469,6 +465,193 @@ main {
     opacity: 0.5;
 }
 
+/* Accounts list container */
+.accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Account main container */
+.account-main {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Account header with identity and actions */
+.account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.account-identity {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+}
+
+.account-name-section {
+    flex: 1;
+}
+
+.account-name-section h4 {
+    margin: 0 0 6px 0;
+    font-size: 1.1rem;
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.account-name-section h4 .streamer-link {
+    color: #667eea;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.account-name-section h4 .streamer-link:hover {
+    color: #5a67d8;
+    text-decoration: underline;
+}
+
+.account-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.username-text {
+    color: #718096;
+    font-size: 0.9rem;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+}
+
+/* Timing section with improved cards */
+.timing-section {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 12px;
+}
+
+.timing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.timing-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.timing-card:hover {
+    background: #f8fafc;
+    border-color: #cbd5e0;
+}
+
+.timing-card.updated {
+    animation: timingUpdate 0.5s ease;
+}
+
+@keyframes timingUpdate {
+    0% {
+        background: #e6fffa;
+        border-color: #38b2ac;
+    }
+    100% {
+        background: white;
+        border-color: #e2e8f0;
+    }
+}
+
+.timing-icon {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.timing-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.timing-label {
+    display: block;
+    font-size: 10px;
+    color: #718096;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.timing-value {
+    display: block;
+    font-size: 12px;
+    color: #2d3748;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timing-value:empty::after {
+    content: 'N/A';
+    color: #cbd5e0;
+    font-style: italic;
+    font-weight: normal;
+}
+
+/* Responsive design for timing cards */
+@media (max-width: 768px) {
+    .timing-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .account-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .account-actions {
+        align-self: flex-end;
+    }
+    
+    .timing-card {
+        padding: 6px 8px;
+    }
+    
+    .timing-label {
+        font-size: 9px;
+    }
+    
+    .timing-value {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .timing-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .account-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+/* Account info (legacy support) */
 .account-info {
     display: flex;
     align-items: center;
@@ -1000,4 +1183,30 @@ input:checked + .toggle-slider:before {
 
 .notification:hover {
     opacity: 0.9;
+}
+
+/* Legacy timing information (keep for backwards compatibility) */
+.timing-info {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+
+.timing-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.timing-row .timing-label {
+  color: #718096;
+  font-weight: 500;
+  min-width: 85px;
+}
+
+.timing-row .timing-value {
+  color: #4a5568;
+  font-weight: 600;
+  text-align: right;
 }

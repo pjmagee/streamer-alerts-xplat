@@ -1,5 +1,6 @@
 import { StreamerAccount, ApiCredentials, StreamerStatus, PlatformStrategies, SmartCheckingConfig } from './types/streamer';
 import './index.css';
+import logger from './utils/renderer-logger';
 
 class StreamerAlertsRenderer {
 
@@ -13,12 +14,14 @@ class StreamerAlertsRenderer {
   }
 
   async init(): Promise<void> {
-
     this.setupEventListeners();
     this.setupModals();
     await this.loadSettings();
     await this.loadAccounts();
     await this.loadApiCredentials();
+    
+    // Start timing updates for account information
+    this.startTimingUpdates();
     
     // Listen for stream status updates from main process
     window.electronAPI.onStreamStatusUpdate((statusUpdates: StreamerStatus[]) => {
@@ -29,6 +32,7 @@ class StreamerAlertsRenderer {
   setupEventListeners(): void {
     // Tab navigation
     const tabButtons = document.querySelectorAll('.tab-button');
+    
     tabButtons.forEach(button => {
       button.addEventListener('click', (e) => {
         const target = e.target as HTMLButtonElement;
@@ -57,7 +61,7 @@ class StreamerAlertsRenderer {
         const target = e.target as HTMLInputElement;
         const platform = target.name.replace('Strategy', '') as 'twitch' | 'youtube' | 'kick';
         const strategy = target.value as 'api' | 'scrape';
-        console.log(`Strategy changed: ${platform} = ${strategy}`);
+        logger.info(`Strategy changed: ${platform} = ${strategy}`);
         // TODO: Call backend method when available
         // window.electronAPI.setPlatformStrategy(platform, strategy);
       });
@@ -289,7 +293,7 @@ class StreamerAlertsRenderer {
       // Load smart checking settings
       this.loadSmartCheckingSettings(smartCheckingConfig);
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logger.error('Failed to load settings:', error);
     }
   }
 
@@ -298,7 +302,7 @@ class StreamerAlertsRenderer {
       this.accounts = await window.electronAPI.getAccounts();
       this.renderAccounts();
     } catch (error) {
-      console.error('Failed to load accounts:', error);
+      logger.error('Failed to load accounts:', error);
     }
   }
 
@@ -307,7 +311,7 @@ class StreamerAlertsRenderer {
       const credentials = await window.electronAPI.getApiCredentials();
       this.updateApiCredentialsUI(credentials);
     } catch (error) {
-      console.error('Failed to load API credentials:', error);
+      logger.error('Failed to load API credentials:', error);
     }
   }
 
@@ -497,21 +501,66 @@ class StreamerAlertsRenderer {
     // Generate the stream URL for clickable name
     const streamUrl = this.getStreamUrl(account);
 
+    // Format timing information
+    const lastCheckedText = this.formatLastChecked(account.lastChecked);
+    const nextCheckText = this.formatNextCheck(account.nextCheckTime);
+    const intervalText = this.formatInterval(account.currentCheckInterval);
+    const offlineChecksText = account.consecutiveOfflineChecks || 0;
+
     return `
-      <div class="account-item ${enabledClass}">
-        <div class="account-info">
-          <div class="status-indicator status-${statusClass}"></div>
-          <div class="account-details">
-            <h4><a href="#" class="streamer-link" data-url="${streamUrl}">${account.displayName || account.username}</a></h4>
-            <p class="platform">${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}</p>
-            <p class="username">${usernameDisplay}</p>
-            <span class="status-badge status-${statusClass}">${statusText}</span>
+      <div class="account-item ${enabledClass}" data-account-id="${account.id}">
+        <div class="account-main">
+          <div class="account-header">
+            <div class="account-identity">
+              <div class="status-indicator status-${statusClass}"></div>
+              <div class="account-name-section">
+                <h4><a href="#" class="streamer-link" data-url="${streamUrl}">${account.displayName || account.username}</a></h4>
+                <div class="account-meta">
+                  <span class="platform-badge platform-${account.platform}">${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}</span>
+                  <span class="username-text">${usernameDisplay}</span>
+                  <span class="status-badge status-${statusClass}">${statusText}</span>
+                </div>
+              </div>
+            </div>
+            <div class="account-actions">
+              <button id="edit-${account.id}" class="btn btn-secondary btn-sm">Edit</button>
+              <button id="toggle-${account.id}" class="btn btn-secondary btn-sm">${toggleText}</button>
+              <button id="delete-${account.id}" class="btn btn-danger btn-sm">Delete</button>
+            </div>
           </div>
-        </div>
-        <div class="account-actions">
-          <button id="edit-${account.id}" class="btn btn-secondary btn-sm">Edit</button>
-          <button id="toggle-${account.id}" class="btn btn-secondary btn-sm">${toggleText}</button>
-          <button id="delete-${account.id}" class="btn btn-danger btn-sm">Delete</button>
+          
+          <div class="timing-section">
+            <div class="timing-grid">
+              <div class="timing-card">
+                <div class="timing-icon">🕒</div>
+                <div class="timing-content">
+                  <div class="timing-label">Last Checked</div>
+                  <div class="timing-value">${lastCheckedText}</div>
+                </div>
+              </div>
+              <div class="timing-card">
+                <div class="timing-icon">⏰</div>
+                <div class="timing-content">
+                  <div class="timing-label">Next Check</div>
+                  <div class="timing-value">${nextCheckText}</div>
+                </div>
+              </div>
+              <div class="timing-card">
+                <div class="timing-icon">⏳</div>
+                <div class="timing-content">
+                  <div class="timing-label">Interval</div>
+                  <div class="timing-value">${intervalText}</div>
+                </div>
+              </div>
+              <div class="timing-card">
+                <div class="timing-icon">📊</div>
+                <div class="timing-content">
+                  <div class="timing-label">Offline Checks</div>
+                  <div class="timing-value">${offlineChecksText}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -619,7 +668,7 @@ class StreamerAlertsRenderer {
       await this.loadAccounts();
       this.hideAddAccountModal();
     } catch (error) {
-      console.error('Failed to add account:', error);
+      logger.error('Failed to add account:', error);
       this.showError('Failed to add account');
     }
   }
@@ -642,7 +691,7 @@ class StreamerAlertsRenderer {
       await this.loadAccounts();
       this.hideEditAccountModal();
     } catch (error) {
-      console.error('Failed to update account:', error);
+      logger.error('Failed to update account:', error);
       this.showError('Failed to update account');
     }
   }
@@ -654,7 +703,7 @@ class StreamerAlertsRenderer {
         await this.loadAccounts();
         this.showSuccess('Streamer deleted successfully!');
       } catch (error) {
-        console.error('Failed to delete account:', error);
+        logger.error('Failed to delete account:', error);
         this.showError('Failed to delete streamer. Please try again.');
       }
     }
@@ -673,7 +722,7 @@ class StreamerAlertsRenderer {
       const statusText = !account.enabled ? 'enabled' : 'disabled';
       this.showSuccess(`Streamer ${statusText} successfully!`);
     } catch (error) {
-      console.error('Failed to toggle account:', error);
+      logger.error('Failed to toggle account:', error);
       this.showError('Failed to update streamer. Please try again.');
     }
   }
@@ -894,10 +943,11 @@ class StreamerAlertsRenderer {
       const element = document.getElementById(id);
       const infoIcon = element?.parentElement?.querySelector('.info-icon');
       
-      if (infoIcon) {
+      if (element && infoIcon) {
         // Enhanced click handler for detailed tooltips
         infoIcon.addEventListener('click', (e) => {
           e.preventDefault();
+          e.stopPropagation();
           this.showDetailedTooltip(data.title, data.content, e.target as HTMLElement);
         });
       }
@@ -979,6 +1029,7 @@ class StreamerAlertsRenderer {
   switchTab(tabName: string): void {
     // Hide all tab content
     const tabContents = document.querySelectorAll('.tab-content');
+    
     tabContents.forEach(content => {
       content.classList.remove('active');
     });
@@ -991,6 +1042,7 @@ class StreamerAlertsRenderer {
 
     // Show the selected tab content
     const activeTabContent = document.getElementById(`${tabName}-tab`);
+    
     if (activeTabContent) {
       activeTabContent.classList.add('active');
     }
@@ -1000,6 +1052,132 @@ class StreamerAlertsRenderer {
     if (activeTabButton) {
       activeTabButton.classList.add('active');
     }
+  }
+
+  // Helper methods for formatting timing information
+  private formatLastChecked(lastChecked?: Date): string {
+    if (!lastChecked) return 'Never';
+    
+    const now = new Date();
+    const diffMs = now.getTime() - new Date(lastChecked).getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
+  private formatNextCheck(nextCheckTime?: number): string {
+    if (!nextCheckTime) return 'Not scheduled';
+    
+    const now = Date.now();
+    const diffMs = nextCheckTime - now;
+    
+    if (diffMs <= 0) return 'Due now';
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 60) return `In ${diffMinutes}m`;
+    
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `In ${diffHours}h`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `In ${diffDays}d`;
+  }
+
+  private formatInterval(intervalMs?: number): string {
+    if (!intervalMs) return 'Not set';
+    
+    const minutes = Math.floor(intervalMs / (1000 * 60));
+    if (minutes < 60) return `${minutes}m`;
+    
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    if (hours < 24) {
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    }
+    
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  }
+
+  // Start periodic updates for timing information
+  startTimingUpdates(): void {
+    // Update timing information every 30 seconds
+    setInterval(() => {
+      this.updateTimingDisplay();
+    }, 30000);
+  }
+
+  // Update only the timing information without full re-render
+  private updateTimingDisplay(): void {
+    this.accounts.forEach(account => {
+      const accountElement = document.querySelector(`[data-account-id="${account.id}"]`);
+      if (!accountElement) return;
+
+      const timingCards = accountElement.querySelectorAll('.timing-card');
+      if (timingCards.length >= 4) {
+        // Update last checked (first card)
+        const lastCheckedValue = timingCards[0].querySelector('.timing-value');
+        if (lastCheckedValue) {
+          const newValue = this.formatLastChecked(account.lastChecked);
+          if (lastCheckedValue.textContent !== newValue) {
+            lastCheckedValue.textContent = newValue;
+            this.animateTimingCard(timingCards[0] as HTMLElement);
+          }
+        }
+
+        // Update next check (second card)
+        const nextCheckValue = timingCards[1].querySelector('.timing-value');
+        if (nextCheckValue) {
+          const newValue = this.formatNextCheck(account.nextCheckTime);
+          if (nextCheckValue.textContent !== newValue) {
+            nextCheckValue.textContent = newValue;
+            this.animateTimingCard(timingCards[1] as HTMLElement);
+          }
+        }
+
+        // Update interval (third card)
+        const intervalValue = timingCards[2].querySelector('.timing-value');
+        if (intervalValue) {
+          const newValue = this.formatInterval(account.currentCheckInterval);
+          if (intervalValue.textContent !== newValue) {
+            intervalValue.textContent = newValue;
+            this.animateTimingCard(timingCards[2] as HTMLElement);
+          }
+        }
+
+        // Update offline checks (fourth card)
+        const offlineChecksValue = timingCards[3].querySelector('.timing-value');
+        if (offlineChecksValue) {
+          const newValue = String(account.consecutiveOfflineChecks || 0);
+          if (offlineChecksValue.textContent !== newValue) {
+            offlineChecksValue.textContent = newValue;
+            this.animateTimingCard(timingCards[3] as HTMLElement);
+          }
+        }
+      }
+    });
+  }
+
+  // Animate timing card when updated
+  private animateTimingCard(card: HTMLElement): void {
+    card.classList.remove('updated');
+    // Force reflow
+    card.offsetHeight;
+    card.classList.add('updated');
+    
+    // Remove animation class after animation completes
+    setTimeout(() => {
+      card.classList.remove('updated');
+    }, 500);
   }
 }
 
