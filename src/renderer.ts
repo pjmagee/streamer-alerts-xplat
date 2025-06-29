@@ -1,7 +1,8 @@
-import { StreamerAccount, ApiCredentials, StreamerStatus, PlatformStrategies } from './types/streamer';
+import { StreamerAccount, ApiCredentials, StreamerStatus, PlatformStrategies, SmartCheckingConfig } from './types/streamer';
 import './index.css';
 
 class StreamerAlertsRenderer {
+
   private accounts: StreamerAccount[] = [];
   private addAccountModal: HTMLElement | null = null;
   private editAccountModal: HTMLElement | null = null;
@@ -12,6 +13,7 @@ class StreamerAlertsRenderer {
   }
 
   async init(): Promise<void> {
+
     this.setupEventListeners();
     this.setupModals();
     await this.loadSettings();
@@ -25,6 +27,18 @@ class StreamerAlertsRenderer {
   }
 
   setupEventListeners(): void {
+    // Tab navigation
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const target = e.target as HTMLButtonElement;
+        const tabName = target.dataset.tab;
+        if (tabName) {
+          this.switchTab(tabName);
+        }
+      });
+    });
+
     // Add account button
     const addAccountBtn = document.getElementById('addAccountBtn');
     addAccountBtn?.addEventListener('click', () => this.showAddAccountModal());
@@ -34,15 +48,6 @@ class StreamerAlertsRenderer {
     notificationsCheckbox?.addEventListener('change', (e) => {
       const target = e.target as HTMLInputElement;
       window.electronAPI.setNotificationsEnabled(target.checked);
-    });
-
-    const checkIntervalInput = document.getElementById('checkInterval') as HTMLInputElement;
-    checkIntervalInput?.addEventListener('change', (e) => {
-      const target = e.target as HTMLInputElement;
-      const minutes = parseInt(target.value, 10);
-      if (minutes > 0) {
-        window.electronAPI.setCheckInterval(minutes * 60000); // Convert to milliseconds
-      }
     });
 
     // Strategy controls
@@ -57,6 +62,12 @@ class StreamerAlertsRenderer {
         // window.electronAPI.setPlatformStrategy(platform, strategy);
       });
     });
+
+    // Smart checking settings
+    this.setupSmartCheckingEventListeners();
+    
+    // Setup enhanced tooltips
+    this.setupEnhancedTooltips();
 
     // Platform specific handlers
     this.setupApiHandlers();
@@ -156,25 +167,127 @@ class StreamerAlertsRenderer {
     });
   }
 
+  setupSmartCheckingEventListeners(): void {
+    // Online check interval
+    const onlineCheckIntervalInput = document.getElementById('onlineCheckInterval') as HTMLInputElement;
+    onlineCheckIntervalInput?.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      let minutes = parseInt(target.value, 10);
+      
+      // Validate and clamp the value
+      if (isNaN(minutes) || minutes < 5) {
+        minutes = 5;
+        target.value = '5';
+      } else if (minutes > 120) {
+        minutes = 120;
+        target.value = '120';
+      }
+      
+      await window.electronAPI.updateSmartCheckingSetting('onlineCheckInterval', minutes * 60000);
+    });
+
+    // Offline check interval
+    const offlineCheckIntervalInput = document.getElementById('offlineCheckInterval') as HTMLInputElement;
+    offlineCheckIntervalInput?.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      let minutes = parseInt(target.value, 10);
+      
+      // Validate and clamp the value
+      if (isNaN(minutes) || minutes < 1) {
+        minutes = 1;
+        target.value = '1';
+      } else if (minutes > 30) {
+        minutes = 30;
+        target.value = '30';
+      }
+      
+      await window.electronAPI.updateSmartCheckingSetting('offlineCheckInterval', minutes * 60000);
+    });
+
+    // Exponential backoff multiplier
+    const backoffMultiplierInput = document.getElementById('exponentialBackoffMultiplier') as HTMLInputElement;
+    backoffMultiplierInput?.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      let multiplier = parseFloat(target.value);
+      
+      // Validate and clamp the value
+      if (isNaN(multiplier) || multiplier < 1.0) {
+        multiplier = 1.0;
+        target.value = '1.0';
+      } else if (multiplier > 5.0) {
+        multiplier = 5.0;
+        target.value = '5.0';
+      }
+      
+      await window.electronAPI.updateSmartCheckingSetting('exponentialBackoffMultiplier', multiplier);
+    });
+
+    // Backoff max interval
+    const backoffMaxIntervalInput = document.getElementById('backoffMaxInterval') as HTMLInputElement;
+    backoffMaxIntervalInput?.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      let minutes = parseInt(target.value, 10);
+      
+      // Validate and clamp the value
+      if (isNaN(minutes) || minutes < 10) {
+        minutes = 10;
+        target.value = '10';
+      } else if (minutes > 240) {
+        minutes = 240;
+        target.value = '240';
+      }
+      
+      await window.electronAPI.updateSmartCheckingSetting('backoffMaxInterval', minutes * 60000);
+    });
+
+    // Jitter percentage
+    const jitterPercentageInput = document.getElementById('jitterPercentage') as HTMLInputElement;
+    const jitterValueSpan = document.querySelector('.jitter-value');
+    jitterPercentageInput?.addEventListener('input', (e) => {
+      const target = e.target as HTMLInputElement;
+      const percentage = parseInt(target.value, 10);
+      if (jitterValueSpan) {
+        jitterValueSpan.textContent = `${percentage}%`;
+      }
+    });
+    jitterPercentageInput?.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      const percentage = parseInt(target.value, 10);
+      await window.electronAPI.updateSmartCheckingSetting('jitterPercentage', percentage);
+    });
+
+    // Disable online checks
+    const disableOnlineChecksInput = document.getElementById('disableOnlineChecks') as HTMLInputElement;
+    disableOnlineChecksInput?.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      await window.electronAPI.updateSmartCheckingSetting('disableOnlineChecks', target.checked);
+    });
+
+    // Reset status on close
+    const resetStatusOnCloseInput = document.getElementById('resetStatusOnClose') as HTMLInputElement;
+    resetStatusOnCloseInput?.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      await window.electronAPI.updateSmartCheckingSetting('resetStatusOnAppClose', target.checked);
+    });
+  }
+
   async loadSettings(): Promise<void> {
     try {
       const notificationsEnabled = await window.electronAPI.getNotificationsEnabled();
-      const checkInterval = await window.electronAPI.getCheckInterval();
       const strategies = await window.electronAPI.getStrategies();
+      const smartCheckingConfig = await window.electronAPI.getSmartChecking();
 
       const notificationsCheckbox = document.getElementById('notificationsEnabled') as HTMLInputElement;
-      const checkIntervalInput = document.getElementById('checkInterval') as HTMLInputElement;
 
       if (notificationsCheckbox) {
         notificationsCheckbox.checked = notificationsEnabled;
       }
 
-      if (checkIntervalInput) {
-        checkIntervalInput.value = String(checkInterval / 60000); // Convert from milliseconds to minutes
-      }
-
       // Load strategy settings
       this.loadStrategies(strategies);
+      
+      // Load smart checking settings
+      this.loadSmartCheckingSettings(smartCheckingConfig);
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -354,9 +467,8 @@ class StreamerAlertsRenderer {
         e.preventDefault();
         const url = (e.target as HTMLElement).getAttribute('data-url');
         if (url) {
-          // Copy URL to clipboard or show it to user for now
-          console.log('Stream URL:', url);
-          this.showNotification(`Stream URL: ${url}`, 'info');
+          // Open stream URL in default browser
+          window.electronAPI.openExternal(url);
         }
       });
     });
@@ -410,7 +522,14 @@ class StreamerAlertsRenderer {
       case 'twitch':
         return `https://twitch.tv/${account.username}`;
       case 'youtube':
-        return `https://youtube.com/channel/${account.username}`;
+        // Check if it's a channel ID (starts with UC) or a handle (@username)
+        if (account.username.startsWith('UC')) {
+          return `https://youtube.com/channel/${account.username}`;
+        } else {
+          // Handle format - add @ if not already present
+          const handle = account.username.startsWith('@') ? account.username : `@${account.username}`;
+          return `https://youtube.com/${handle}`;
+        }
       case 'kick':
         return `https://kick.com/${account.username}`;
       default:
@@ -515,7 +634,7 @@ class StreamerAlertsRenderer {
     const updates = {
       username: formData.get('username') as string,
       platform: formData.get('platform') as 'twitch' | 'youtube' | 'kick',
-      displayName: formData.get('displayName') as string || undefined
+      displayName: formData.get('displayName') as string | undefined
     };
 
     try {
@@ -599,6 +718,288 @@ class StreamerAlertsRenderer {
 
   showError(message: string): void {
     this.showNotification(message, 'error');
+  }
+
+  loadSmartCheckingSettings(config: SmartCheckingConfig): void {
+    // Online check interval
+    const onlineCheckIntervalInput = document.getElementById('onlineCheckInterval') as HTMLInputElement;
+    if (onlineCheckIntervalInput && config.onlineCheckInterval) {
+      const minutes = Math.round(config.onlineCheckInterval / 60000);
+      onlineCheckIntervalInput.value = String(minutes);
+    }
+
+    // Offline check interval
+    const offlineCheckIntervalInput = document.getElementById('offlineCheckInterval') as HTMLInputElement;
+    if (offlineCheckIntervalInput && config.offlineCheckInterval) {
+      const minutes = Math.round(config.offlineCheckInterval / 60000);
+      offlineCheckIntervalInput.value = String(minutes);
+    }
+
+    // Exponential backoff multiplier
+    const backoffMultiplierInput = document.getElementById('exponentialBackoffMultiplier') as HTMLInputElement;
+    if (backoffMultiplierInput && config.exponentialBackoffMultiplier) {
+      // Round to 1 decimal place for better UX
+      const multiplier = Math.round(config.exponentialBackoffMultiplier * 10) / 10;
+      backoffMultiplierInput.value = String(multiplier);
+    }
+
+    // Backoff max interval
+    const backoffMaxIntervalInput = document.getElementById('backoffMaxInterval') as HTMLInputElement;
+    if (backoffMaxIntervalInput && config.backoffMaxInterval) {
+      const minutes = Math.round(config.backoffMaxInterval / 60000);
+      backoffMaxIntervalInput.value = String(minutes);
+    }
+
+    // Jitter percentage
+    const jitterPercentageInput = document.getElementById('jitterPercentage') as HTMLInputElement;
+    const jitterValueSpan = document.querySelector('.jitter-value');
+    if (jitterPercentageInput && config.jitterPercentage !== undefined) {
+      jitterPercentageInput.value = String(config.jitterPercentage);
+      if (jitterValueSpan) {
+        jitterValueSpan.textContent = `${config.jitterPercentage}%`;
+      }
+    }
+
+    // Disable online checks
+    const disableOnlineChecksInput = document.getElementById('disableOnlineChecks') as HTMLInputElement;
+    if (disableOnlineChecksInput && config.disableOnlineChecks !== undefined) {
+      disableOnlineChecksInput.checked = config.disableOnlineChecks;
+    }
+
+    // Reset status on close
+    const resetStatusOnCloseInput = document.getElementById('resetStatusOnClose') as HTMLInputElement;
+    if (resetStatusOnCloseInput && config.resetStatusOnAppClose !== undefined) {
+      resetStatusOnCloseInput.checked = config.resetStatusOnAppClose;
+    }
+  }
+
+  setupEnhancedTooltips(): void {
+    // Enhanced tooltip data with examples and formatting
+    const tooltipData = {
+      'onlineCheckInterval': {
+        title: 'Online Check Interval',
+        content: `
+          <strong>How often to verify live streamers are still streaming</strong>
+          <br><br>
+          <em>Examples:</em>
+          <ul>
+            <li><strong>30 min:</strong> Quick to detect when streamers go offline</li>
+            <li><strong>60 min:</strong> Balanced (recommended)</li>
+            <li><strong>120 min:</strong> Very efficient, slower offline detection</li>
+          </ul>
+          <br>
+          <em>💡 Tip:</em> Higher values save API calls but may delay offline notifications.
+        `
+      },
+      'offlineCheckInterval': {
+        title: 'Offline Check Interval',
+        content: `
+          <strong>Base interval for checking if offline streamers have gone live</strong>
+          <br><br>
+          <em>How it works:</em>
+          <ul>
+            <li>This is the <strong>starting</strong> interval for recently offline streamers</li>
+            <li>Interval increases exponentially for long-term offline streamers</li>
+            <li>Resets to this base when a streamer comes back online</li>
+          </ul>
+          <br>
+          <em>💡 Tip:</em> Lower values (2-5 min) catch streams faster but use more API calls.
+        `
+      },
+      'exponentialBackoffMultiplier': {
+        title: 'Exponential Backoff Multiplier',
+        content: `
+          <strong>How aggressively to reduce checking for offline streamers</strong>
+          <br><br>
+          <em>Example with 1.8x multiplier:</em>
+          <ul>
+            <li>Check 1: 3 minutes</li>
+            <li>Check 2: 5.4 minutes (3 × 1.8)</li>
+            <li>Check 3: 9.7 minutes (5.4 × 1.8)</li>
+            <li>Check 4: 17.5 minutes</li>
+            <li>...until max interval reached</li>
+          </ul>
+          <br>
+          <em>💡 Tip:</em> 1.0 = no backoff, 2.0 = aggressive, 1.5 = balanced
+        `
+      },
+      'backoffMaxInterval': {
+        title: 'Maximum Backoff Interval',
+        content: `
+          <strong>Cap on how long to wait between checks</strong>
+          <br><br>
+          <em>Purpose:</em>
+          <ul>
+            <li>Prevents waiting too long for inactive streamers</li>
+            <li>Even long-term offline streamers get checked regularly</li>
+            <li>Balances efficiency with responsiveness</li>
+          </ul>
+          <br>
+          <em>💡 Tip:</em> 30-60 min is usually optimal - not too frequent, not too rare.
+        `
+      },
+      'jitterPercentage': {
+        title: 'Jitter Percentage',
+        content: `
+          <strong>Randomizes check timing to spread out API requests</strong>
+          <br><br>
+          <em>Example with 15% jitter on 10-minute interval:</em>
+          <ul>
+            <li>Actual check time: 8.5-11.5 minutes (±15%)</li>
+            <li>Prevents all streamers being checked at once</li>
+            <li>Reduces API rate limiting risks</li>
+          </ul>
+          <br>
+          <em>💡 Tip:</em> 10-20% provides good distribution without unpredictability
+        `
+      },
+      'disableOnlineChecks': {
+        title: 'Disable Online Checks',
+        content: `
+          <strong>Stop checking streamers once they go live</strong>
+          <br><br>
+          <em>Benefits:</em>
+          <ul>
+            <li>Saves API calls for active streams</li>
+            <li>Reduces server load</li>
+            <li>Good for rate-limited scenarios</li>
+          </ul>
+          <br>
+          <em>Trade-offs:</em>
+          <ul>
+            <li>Won't detect when streams end automatically</li>
+            <li>Requires app restart or manual refresh</li>
+          </ul>
+        `
+      },
+      'resetStatusOnClose': {
+        title: 'Reset Stream Status on App Close',
+        content: `
+          <strong>Clear all stream statuses when app closes</strong>
+          <br><br>
+          <em>When enabled:</em>
+          <ul>
+            <li>All streamers reset to "unknown" status on startup</li>
+            <li>Polling intervals reset to base values</li>
+            <li>Fresh start every time you open the app</li>
+          </ul>
+          <br>
+          <em>💡 Tip:</em> Useful for testing or if you want clean state each session.
+        `
+      }
+    };
+
+    // Create tooltip elements and event handlers
+    Object.entries(tooltipData).forEach(([id, data]) => {
+      const element = document.getElementById(id);
+      const infoIcon = element?.parentElement?.querySelector('.info-icon');
+      
+      if (infoIcon) {
+        // Enhanced click handler for detailed tooltips
+        infoIcon.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.showDetailedTooltip(data.title, data.content, e.target as HTMLElement);
+        });
+      }
+    });
+
+    // Add example value updates for real-time feedback
+    this.setupExampleUpdates();
+  }
+
+  setupExampleUpdates(): void {
+    // Real-time examples for backoff multiplier
+    const multiplierInput = document.getElementById('exponentialBackoffMultiplier') as HTMLInputElement;
+    const multiplierLabel = multiplierInput?.parentElement?.querySelector('label');
+    
+    if (multiplierInput && multiplierLabel) {
+      const updateExample = () => {
+        const multiplier = parseFloat(multiplierInput.value) || 1.5;
+        const baseInterval = 5; // 5 minutes base
+        const example1 = baseInterval * Math.pow(multiplier, 1);
+        const example2 = baseInterval * Math.pow(multiplier, 2);
+        const example3 = baseInterval * Math.pow(multiplier, 3);
+        
+        // Update help text with live example
+        const helpSpan = multiplierInput.parentElement?.querySelector('.setting-help');
+        if (helpSpan) {
+          helpSpan.textContent = `Example: 5min → ${example1.toFixed(1)}min → ${example2.toFixed(1)}min → ${example3.toFixed(1)}min...`;
+        }
+      };
+      
+      multiplierInput.addEventListener('input', updateExample);
+      updateExample(); // Initial update
+    }
+  }
+
+  showDetailedTooltip(title: string, content: string, target: HTMLElement): void {
+    // Remove any existing tooltip
+    const existingTooltip = document.querySelector('.detailed-tooltip');
+    if (existingTooltip) {
+      existingTooltip.remove();
+    }
+
+    // Create detailed tooltip
+    const tooltip = document.createElement('div');
+    tooltip.className = 'detailed-tooltip';
+    tooltip.innerHTML = `
+      <div class="tooltip-header">
+        <h4>${title}</h4>
+        <button class="tooltip-close">&times;</button>
+      </div>
+      <div class="tooltip-content">
+        ${content}
+      </div>
+    `;
+
+    // Position tooltip
+    const rect = target.getBoundingClientRect();
+    tooltip.style.position = 'fixed';
+    tooltip.style.top = `${rect.bottom + 10}px`;
+    tooltip.style.left = `${Math.max(10, rect.left - 150)}px`;
+    tooltip.style.zIndex = '10000';
+
+    document.body.appendChild(tooltip);
+
+    // Close handlers
+    const closeBtn = tooltip.querySelector('.tooltip-close');
+    const closeTooltip = () => tooltip.remove();
+    
+    closeBtn?.addEventListener('click', closeTooltip);
+    document.addEventListener('click', (e) => {
+      if (!tooltip.contains(e.target as Node) && !target.contains(e.target as Node)) {
+        closeTooltip();
+      }
+    }, { once: true });
+
+    // Auto-close after 10 seconds
+    setTimeout(closeTooltip, 10000);
+  }
+
+  switchTab(tabName: string): void {
+    // Hide all tab content
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => {
+      content.classList.remove('active');
+    });
+
+    // Remove active class from all tab buttons
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+      button.classList.remove('active');
+    });
+
+    // Show the selected tab content
+    const activeTabContent = document.getElementById(`${tabName}-tab`);
+    if (activeTabContent) {
+      activeTabContent.classList.add('active');
+    }
+
+    // Set the active class on the clicked tab button
+    const activeTabButton = Array.from(tabButtons).find(button => (button as HTMLElement).dataset.tab === tabName);
+    if (activeTabButton) {
+      activeTabButton.classList.add('active');
+    }
   }
 }
 

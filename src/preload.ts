@@ -1,52 +1,35 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { PlatformStrategies, ApiCredentials, StreamerAccount } from './types/streamer';
+import { ElectronAPI } from './types/electron-api';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 
-contextBridge.exposeInMainWorld('electronAPI', {
-
-  // Config methods
+const electronAPI: ElectronAPI = {
   getAccounts: () => ipcRenderer.invoke('config:getAccounts'),
-  addAccount: (account: Omit<StreamerAccount, 'id'>) => ipcRenderer.invoke('config:addAccount', account),
-  updateAccount: (id: string, updates: Partial<StreamerAccount>) => ipcRenderer.invoke('config:updateAccount', id, updates),
-  removeAccount: (id: string) => ipcRenderer.invoke('config:removeAccount', id),
-
-  // Settings methods
+  addAccount: (account) => ipcRenderer.invoke('config:addAccount', account),
+  updateAccount: (id, updates) => ipcRenderer.invoke('config:updateAccount', id, updates),
+  removeAccount: (id) => ipcRenderer.invoke('config:removeAccount', id),
   getNotificationsEnabled: () => ipcRenderer.invoke('config:getNotificationsEnabled'),
-  setNotificationsEnabled: (enabled: boolean) => ipcRenderer.invoke('config:setNotificationsEnabled', enabled),
-  getCheckInterval: () => ipcRenderer.invoke('config:getCheckInterval'),
-  setCheckInterval: (interval: number) => ipcRenderer.invoke('config:setCheckInterval', interval),
-
-  // Strategy methods
+  setNotificationsEnabled: (enabled) => ipcRenderer.invoke('config:setNotificationsEnabled', enabled),
   getStrategies: () => ipcRenderer.invoke('config:getStrategies'),
-  setStrategies: (strategies: PlatformStrategies) => ipcRenderer.invoke('config:setStrategies', strategies),
-  setPlatformStrategy: (platform: string, strategy: string) => ipcRenderer.invoke('config:setPlatformStrategy', platform, strategy),
-
-  // API Credentials methods
+  setStrategies: (strategies) => ipcRenderer.invoke('config:setStrategies', strategies),
+  setPlatformStrategy: (platform, strategy) => ipcRenderer.invoke('config:setPlatformStrategy', platform, strategy),
   getApiCredentials: () => ipcRenderer.invoke('config:getApiCredentials'),
-  setApiCredentials: (credentials: ApiCredentials) => ipcRenderer.invoke('config:setApiCredentials', credentials),  // OAuth methods for all platforms
+  setApiCredentials: (credentials) => ipcRenderer.invoke('config:setApiCredentials', credentials),
+  getSmartChecking: () => ipcRenderer.invoke('config:getSmartChecking'),
+  setSmartChecking: (config) => ipcRenderer.invoke('config:setSmartChecking', config),
+  updateSmartCheckingSetting: (key, value) => ipcRenderer.invoke('config:updateSmartCheckingSetting', key, value),
   authenticateTwitch: () => ipcRenderer.invoke('oauth:authenticateTwitch'),
   logoutTwitch: () => ipcRenderer.invoke('oauth:logoutTwitch'),
   authenticateYouTube: () => ipcRenderer.invoke('oauth:authenticateYouTube'),
   logoutYouTube: () => ipcRenderer.invoke('oauth:logoutYouTube'),
   authenticateKick: () => ipcRenderer.invoke('oauth:authenticateKick'),
   logoutKick: () => ipcRenderer.invoke('oauth:logoutKick'),
-
-  // Stream checking
-  checkStreamStatus: (account: StreamerAccount) => ipcRenderer.invoke('stream:checkStatus', account),
-
-  // Window methods
+  checkStreamStatus: (account) => ipcRenderer.invoke('stream:checkStatus', account),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
-  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),  
+  onStreamStatusUpdate: (callback) => ipcRenderer.on('stream:statusUpdate', (_, data) => callback(data))
+};
 
-  // Event listeners
-  onStreamStatusUpdate: (callback: (data: import('./types/streamer').StreamerStatus[]) => void) => {
-    ipcRenderer.on('stream:statusUpdate', (event, data) => callback(data));
-  },
-
-  removeAllListeners: (channel: string) => {
-    ipcRenderer.removeAllListeners(channel);
-  }
-});
+contextBridge.exposeInMainWorld('electronAPI', electronAPI);

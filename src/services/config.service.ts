@@ -1,5 +1,5 @@
 import Store from 'electron-store';
-import { StreamerAccount, AppConfig, ApiCredentials, PlatformStrategies, StreamCheckStrategy } from '../types/streamer';
+import { StreamerAccount, AppConfig, ApiCredentials, PlatformStrategies, StreamCheckStrategy, SmartCheckingConfig } from '../types/streamer';
 import { app } from 'electron';
 
 export class ConfigService {
@@ -17,7 +17,16 @@ export class ConfigService {
       defaults: {
         accounts: [],
         notificationsEnabled: true,
-        checkInterval: 120000, // 2 minutes
+        checkInterval: 120000, // 2 minutes - kept for backward compatibility
+        smartChecking: {
+          onlineCheckInterval: 1800000, // 30 minutes in milliseconds (more responsive)
+          offlineCheckInterval: 180000, // 3 minutes in milliseconds (faster initial checks)
+          exponentialBackoffMultiplier: 1.8, // More aggressive backoff than 1.5
+          backoffMaxInterval: 2700000, // 45 minutes in milliseconds (reasonable max)
+          jitterPercentage: 15, // Better spread of API requests
+          disableOnlineChecks: false, // Keep checking online channels by default
+          resetStatusOnAppClose: false // Preserve status across app restarts
+        },
         windowSettings: {
           width: 1280,
           height: 720
@@ -104,14 +113,6 @@ export class ConfigService {
 
   public setNotificationsEnabled(enabled: boolean): void {
     this.store.set('notificationsEnabled', enabled);
-  }
-
-  public getCheckInterval(): number {
-    return this.store.get('checkInterval', 120000);
-  }
-
-  public setCheckInterval(interval: number): void {
-    this.store.set('checkInterval', interval);
   }
 
   public getWindowSettings(): { width: number; height: number } {
@@ -269,6 +270,33 @@ export class ConfigService {
     const strategies = this.getStrategies();
     strategies[platform] = strategy;
     this.setStrategies(strategies);
+  }
+
+  // Smart checking configuration methods
+
+  public getSmartChecking(): SmartCheckingConfig {
+    return this.store.get('smartChecking', {
+      onlineCheckInterval: 1800000,  // 30 minutes in milliseconds
+      offlineCheckInterval: 180000,  // 3 minutes in milliseconds  
+      exponentialBackoffMultiplier: 1.8,
+      backoffMaxInterval: 2700000,   // 45 minutes in milliseconds
+      jitterPercentage: 15,
+      disableOnlineChecks: false,
+      resetStatusOnAppClose: false
+    });
+  }
+
+  public setSmartChecking(config: SmartCheckingConfig): void {
+    this.store.set('smartChecking', config);
+  }
+
+  public updateSmartCheckingSetting<K extends keyof SmartCheckingConfig>(
+    key: K, 
+    value: SmartCheckingConfig[K]
+  ): void {
+    const currentConfig = this.getSmartChecking();
+    currentConfig[key] = value;
+    this.setSmartChecking(currentConfig);
   }
 
   private generateId(): string {

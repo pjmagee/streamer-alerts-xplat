@@ -16,131 +16,230 @@
         </header>
 
         <main>
-            <section class="settings-section">
-            <h2>⚙️ General Settings</h2>
-            <div class="setting-item">
-                <label>
-                    <input type="checkbox" id="notificationsEnabled" checked>
-                    Enable notifications
-                </label>
-            </div>
-            <div class="setting-item">
-                <label for="checkInterval">Check interval (minutes):</label>
-                <input type="number" id="checkInterval" min="1" max="60" value="2">
-            </div>
-        </section>
+            <!-- Tab Navigation -->
+            <nav class="tab-navigation">
+                <button class="tab-button active" data-tab="settings">⚙️ Settings</button>
+                <button class="tab-button" data-tab="strategy">📊 Strategy</button>
+                <button class="tab-button" data-tab="api">🔑 API</button>
+                <button class="tab-button" data-tab="accounts">👥 Accounts</button>
+            </nav>
 
-        <section class="strategy-section">
-            <h2>📊 Check Strategy</h2>
-            <p class="strategy-help">Choose how to check stream status for each platform. Scraping requires no login but may be less reliable.</p>
-                
-                <div class="strategy-group">
-                    <div class="strategy-item">
-                        <span class="platform-label">🟣 Twitch:</span>
-                        <div class="strategy-toggle">
-                            <label class="toggle-option">
-                                <input type="radio" name="twitchStrategy" value="scrape" id="twitchScrape">
-                                <span class="toggle-text">Scrape</span>
-                            </label>
-                            <label class="toggle-option">
-                                <input type="radio" name="twitchStrategy" value="api" id="twitchAPI" checked>
-                                <span class="toggle-text">API</span>
+            <!-- Settings Tab -->
+            <div id="settings-tab" class="tab-content active">
+                <section class="general-settings-section">
+                    <h2>⚙️ General Settings</h2>
+                    <div class="settings-row">
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="notificationsEnabled" checked>
+                                Enable notifications
                             </label>
                         </div>
                     </div>
+                </section>
+
+                <section class="smart-checking-section">
+                    <h2>🧠 Smart Checking Configuration</h2>
+                    <p class="section-help">Configure intelligent polling intervals to reduce unnecessary checks and improve performance.</p>
                     
-                    <div class="strategy-item">
-                        <span class="platform-label">🔴 YouTube:</span>
-                        <div class="strategy-toggle">
-                            <label class="toggle-option">
-                                <input type="radio" name="youtubeStrategy" value="scrape" id="youtubeScrape">
-                                <span class="toggle-text">Scrape</span>
-                            </label>
-                            <label class="toggle-option">
-                                <input type="radio" name="youtubeStrategy" value="api" id="youtubeAPI" checked>
-                                <span class="toggle-text">API</span>
-                            </label>
+                    <div class="smart-checking-grid">
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label for="onlineCheckInterval">
+                                    Online check interval (minutes):
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <input type="number" id="onlineCheckInterval" min="5" max="120" value="30" step="1">
+                                <span class="setting-help">How often to check if online streamers are still online</span>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <label for="offlineCheckInterval">
+                                    Offline check interval (minutes):
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <input type="number" id="offlineCheckInterval" min="1" max="30" value="3" step="1">
+                                <span class="setting-help">Base interval that increases for long-term offline streamers</span>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label for="exponentialBackoffMultiplier">
+                                    Exponential backoff multiplier:
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <input type="number" id="exponentialBackoffMultiplier" min="1" max="5" step="0.1" value="1.8">
+                                <span class="setting-help">Example: 3min → 5.4min → 9.7min → 17.5min...</span>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <label for="backoffMaxInterval">
+                                    Maximum backoff interval (minutes):
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <input type="number" id="backoffMaxInterval" min="10" max="240" value="45" step="5">
+                                <span class="setting-help">Cap for exponential backoff (recommended: 30-120 min)</span>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label for="jitterPercentage">
+                                    Jitter percentage:
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <div class="jitter-control">
+                                    <input type="range" id="jitterPercentage" min="0" max="50" value="15" step="5">
+                                    <span class="jitter-value">15%</span>
+                                </div>
+                                <span class="setting-help">Prevents simultaneous API requests (±15% timing variation)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label>
+                                    <input type="checkbox" id="disableOnlineChecks">
+                                    Disable online checks
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <span class="setting-help">Stop checking streamers once they go online</span>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <label>
+                                    <input type="checkbox" id="resetStatusOnClose">
+                                    Reset stream status on app close
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <span class="setting-help">Clear all stream statuses when the app is closed</span>
+                            </div>
                         </div>
                     </div>
+                </section>
+            </div>
+
+            <!-- Strategy Tab -->
+            <div id="strategy-tab" class="tab-content">
+                <section class="strategy-section">
+                    <h2>📊 Check Strategy</h2>
+                    <p class="strategy-help">Choose how to check stream status for each platform. Scraping requires no login but may be less reliable.</p>
+                        
+                    <div class="strategy-group">
+                        <div class="strategy-item">
+                            <span class="platform-label">🟣 Twitch:</span>
+                            <div class="strategy-toggle">
+                                <label class="toggle-option">
+                                    <input type="radio" name="twitchStrategy" value="scrape" id="twitchScrape">
+                                    <span class="toggle-text">Scrape</span>
+                                </label>
+                                <label class="toggle-option">
+                                    <input type="radio" name="twitchStrategy" value="api" id="twitchAPI" checked>
+                                    <span class="toggle-text">API</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="strategy-item">
+                            <span class="platform-label">🔴 YouTube:</span>
+                            <div class="strategy-toggle">
+                                <label class="toggle-option">
+                                    <input type="radio" name="youtubeStrategy" value="scrape" id="youtubeScrape">
+                                    <span class="toggle-text">Scrape</span>
+                                </label>
+                                <label class="toggle-option">
+                                    <input type="radio" name="youtubeStrategy" value="api" id="youtubeAPI" checked>
+                                    <span class="toggle-text">API</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="strategy-item">
+                            <span class="platform-label">🟢 Kick:</span>
+                            <div class="strategy-toggle">
+                                <label class="toggle-option">
+                                    <input type="radio" name="kickStrategy" value="scrape" id="kickScrape">
+                                    <span class="toggle-text">Scrape</span>
+                                </label>
+                                <label class="toggle-option">
+                                    <input type="radio" name="kickStrategy" value="api" id="kickAPI" checked>
+                                    <span class="toggle-text">API</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- API Tab -->
+            <div id="api-tab" class="tab-content">
+                <section class="api-section">                
+                    <h2>🔑 API Configuration</h2>
+                    <p class="api-help">Please log in to each platform you want to monitor when using API strategy.</p>
                     
-                    <div class="strategy-item">
-                        <span class="platform-label">🟢 Kick:</span>
-                        <div class="strategy-toggle">
-                            <label class="toggle-option">
-                                <input type="radio" name="kickStrategy" value="scrape" id="kickScrape">
-                                <span class="toggle-text">Scrape</span>
-                            </label>
-                            <label class="toggle-option">
-                                <input type="radio" name="kickStrategy" value="api" id="kickAPI" checked>
-                                <span class="toggle-text">API</span>
-                            </label>
+                    <div class="api-group">
+                        <h3>🟣 Twitch</h3>
+                        <div class="oauth-section">
+                            <div id="twitchStatus" class="status logged-out">Not logged in</div>
+                            <div class="oauth-buttons">
+                                <button type="button" class="btn btn-primary" id="twitchLoginBtn">
+                                    <span class="btn-icon">🔑</span> Login with Twitch
+                                </button>
+                                <button type="button" class="btn btn-secondary hidden" id="twitchLogoutBtn">
+                                    <span class="btn-icon">🚪</span> Logout
+                                </button>
+                            </div>
+                            <p class="api-help" id="twitchHelp">Login required for stream status monitoring</p>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            <section class="api-section">                
-                <h2>🔑 API Configuration</h2>
-                <p class="api-help">Please log in to each platform you want to monitor when using API strategy.</p>
-                
-                <div class="api-group">
-                    <h3>🟣 Twitch</h3>
-                    <div class="oauth-section">
-                        <div id="twitchStatus" class="status logged-out">Not logged in</div>
-                        <div class="oauth-buttons">
-                            <button type="button" class="btn btn-primary" id="twitchLoginBtn">
-                                <span class="btn-icon">🔑</span> Login with Twitch
-                            </button>
-                            <button type="button" class="btn btn-secondary hidden" id="twitchLogoutBtn">
-                                <span class="btn-icon">🚪</span> Logout
-                            </button>
+                    <div class="api-group">
+                        <h3>🔴 YouTube</h3>
+                        <div class="oauth-section">
+                            <div id="youtubeStatus" class="status logged-out">Not logged in</div>
+                            <div class="oauth-buttons">
+                                <button type="button" class="btn btn-primary" id="youtubeLoginBtn">
+                                    <span class="btn-icon">🔑</span> Login with YouTube
+                                </button>
+                                <button type="button" class="btn btn-secondary hidden" id="youtubeLogoutBtn">
+                                    <span class="btn-icon">🚪</span> Logout
+                                </button>
+                            </div>
+                            <p class="api-help" id="youtubeHelp">Login required for stream status monitoring</p>
                         </div>
-                        <p class="api-help" id="twitchHelp">Login required for stream status monitoring</p>
-                    </div>
-                </div>
-
-                <div class="api-group">
-                    <h3>🔴 YouTube</h3>
-                    <div class="oauth-section">
-                        <div id="youtubeStatus" class="status logged-out">Not logged in</div>
-                        <div class="oauth-buttons">
-                            <button type="button" class="btn btn-primary" id="youtubeLoginBtn">
-                                <span class="btn-icon">🔑</span> Login with YouTube
-                            </button>
-                            <button type="button" class="btn btn-secondary hidden" id="youtubeLogoutBtn">
-                                <span class="btn-icon">🚪</span> Logout
-                            </button>
+                    </div>                
+                    <div class="api-group">
+                        <h3>🟢 Kick</h3>
+                        <div class="oauth-section">
+                            <div id="kickStatus" class="status logged-out">Not logged in</div>
+                            <div class="oauth-buttons">
+                                <button type="button" class="btn btn-primary" id="kickLoginBtn">
+                                    <span class="btn-icon">🔑</span> Login with Kick
+                                </button>
+                                <button type="button" class="btn btn-secondary hidden" id="kickLogoutBtn">
+                                    <span class="btn-icon">🚪</span> Logout
+                                </button>
+                            </div>
+                            <p class="api-help" id="kickHelp">Login required for stream status monitoring</p>
                         </div>
-                        <p class="api-help" id="youtubeHelp">Login required for stream status monitoring</p>
                     </div>
-                </div>                
-                <div class="api-group">
-                    <h3>🟢 Kick</h3>
-                    <div class="oauth-section">
-                        <div id="kickStatus" class="status logged-out">Not logged in</div>
-                        <div class="oauth-buttons">
-                            <button type="button" class="btn btn-primary" id="kickLoginBtn">
-                                <span class="btn-icon">🔑</span> Login with Kick
-                            </button>
-                            <button type="button" class="btn btn-secondary hidden" id="kickLogoutBtn">
-                                <span class="btn-icon">�</span> Logout
-                            </button>
-                        </div>
-                        <p class="api-help" id="kickHelp">Login required for stream status monitoring</p>
+                </section>
+            </div>
+
+            <!-- Accounts Tab -->
+            <div id="accounts-tab" class="tab-content">
+                <section class="accounts-section">
+                    <div class="section-header">
+                        <h2>👥 Streamer Accounts</h2>
+                        <button id="addAccountBtn" class="btn btn-primary">+ Add Account</button>
                     </div>
-                </div>
-            </section>
 
-            <section class="accounts-section">
-                <div class="section-header">
-                    <h2>👥 Streamer Accounts</h2>
-                    <button id="addAccountBtn" class="btn btn-primary">+ Add Account</button>
-                </div>
-
-                <div id="accountsList" class="accounts-list">
-                    <!-- Accounts will be dynamically added here -->
-                </div>
-            </section>
+                    <div id="accountsList" class="accounts-list">
+                        <!-- Accounts will be dynamically added here -->
+                    </div>
+                </section>
+            </div>
         </main>
 
         <!-- Add Account Modal -->

@@ -7,6 +7,11 @@ export interface StreamerAccount {
   lastStatus?: 'live' | 'offline';
   lastChecked?: Date;
   platformId?: string; // Used for YouTube channel IDs when username is different
+  
+  // Smart checking properties
+  consecutiveOfflineChecks?: number; // Number of consecutive offline checks
+  nextCheckTime?: number; // When to check this channel next (timestamp)
+  currentCheckInterval?: number; // Current interval for this specific channel (in ms)
 }
 
 export interface StreamerStatus {
@@ -24,12 +29,8 @@ export interface TwitchStreamResponse {
     id: string;
     user_id: string;
     user_login: string;
-    user_name: string;
-    game_id: string;
-    type: string;
+    user_name: string;    
     title: string;
-    started_at: string;
-    language: string;
   }>;
 }
 
@@ -49,10 +50,34 @@ export interface PlatformStrategies {
   kick: StreamCheckStrategy;
 }
 
+export interface SmartCheckingConfig {
+  // Check interval for channels that are online (in minutes)
+  onlineCheckInterval: number;
+  
+  // Check interval for channels that are offline (in minutes)
+  offlineCheckInterval: number;
+  
+  // Exponential backoff multiplier for consecutive offline checks
+  exponentialBackoffMultiplier: number;
+  
+  // Maximum time between checks (in minutes)
+  backoffMaxInterval: number;
+  
+  // Random jitter percentage (0-100) to add variation to check times
+  jitterPercentage: number;
+  
+  // Stop checking channels when they're online
+  disableOnlineChecks: boolean;
+  
+  // Reset all channel statuses when app is closed/restarted
+  resetStatusOnAppClose: boolean;
+}
+
 export interface AppConfig {
   accounts: StreamerAccount[];
   notificationsEnabled: boolean;
-  checkInterval: number;
+  checkInterval: number; // Legacy - kept for backward compatibility
+  smartChecking: SmartCheckingConfig;
   windowSettings: {
     width: number;
     height: number;
@@ -61,33 +86,19 @@ export interface AppConfig {
   strategies: PlatformStrategies;
 }
 
-export interface ApiCredentials {
-  twitch: {
-    clientId: string;
-    accessToken: string;
-    refreshToken?: string;
-    expiresAt?: number;
-    isLoggedIn: boolean;
-    username?: string;
-    displayName?: string;
-  };
+export interface Credentials{
+  clientId: string;
+  clientSecret?: string;
+  refreshToken?: string;
+  accessToken?: string;
+  expiresAt?: number;
+  isLoggedIn: boolean;
+  username?: string;
+  displayName?: string;
+}
 
-  youtube: {
-    clientId: string;
-    accessToken: string;
-    refreshToken?: string;
-    expiresAt?: number;
-    isLoggedIn: boolean;
-    displayName?: string;
-  };
-
-  kick: {
-    clientId: string;
-    accessToken?: string;
-    refreshToken?: string;
-    expiresAt?: number;
-    isLoggedIn: boolean;
-    username?: string;
-    displayName?: string;
-  };
+export interface ApiCredentials {  
+  twitch: Credentials;
+  youtube: Credentials;
+  kick: Credentials;
 }

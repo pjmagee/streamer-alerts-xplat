@@ -6,7 +6,7 @@ import {
   ConfigService,
   OAuthService
 } from './services';
-import { StreamerStatus } from './types/streamer';
+import { StreamerStatus, StreamerAccount } from './types/streamer';
 
 // Custom property to track if app is quitting
 let isAppQuitting = false;
@@ -77,6 +77,22 @@ class StreamerAlertsApp {
       if (this.checkInterval) {
         clearInterval(this.checkInterval);
       }
+      
+      // Reset stream status if configured
+      const smartConfig = this.configService.getSmartChecking();
+      if (smartConfig.resetStatusOnAppClose) {
+        const accounts = this.configService.getAccounts();
+        for (const account of accounts) {
+          this.configService.updateAccount(account.id, {
+            lastStatus: undefined,
+            nextCheckTime: undefined,
+            currentCheckInterval: undefined,
+            consecutiveOfflineChecks: 0
+          });
+        }
+        console.log('Stream statuses reset on app close');
+      }
+      
       await this.streamerService.cleanup();
     });
   }
@@ -103,13 +119,6 @@ class StreamerAlertsApp {
           this.checkInterval = null;
         }
       }
-    });
-
-    ipcMain.handle('config:getCheckInterval', () => this.configService.getCheckInterval());
-    ipcMain.handle('config:setCheckInterval', (_, interval) => {
-      this.configService.setCheckInterval(interval);
-      // Restart streaming checks with new interval
-      this.restartStreamingChecks();
     });
 
     // API Credentials IPC handlers
@@ -218,6 +227,11 @@ class StreamerAlertsApp {
     ipcMain.handle('config:getStrategies', () => this.configService.getStrategies());
     ipcMain.handle('config:setStrategies', (_, strategies) => this.configService.setStrategies(strategies));
     ipcMain.handle('config:setPlatformStrategy', (_, platform, strategy) => this.configService.setPlatformStrategy(platform, strategy));
+
+    // Smart checking IPC handlers
+    ipcMain.handle('config:getSmartChecking', () => this.configService.getSmartChecking());
+    ipcMain.handle('config:setSmartChecking', (_, config) => this.configService.setSmartChecking(config));
+    ipcMain.handle('config:updateSmartCheckingSetting', (_, key, value) => this.configService.updateSmartCheckingSetting(key, value));
   }
   private createTray(): void {
     // Use appropriately sized icons for each platform
@@ -423,32 +437,127 @@ class StreamerAlertsApp {
   }
 
   private async startStreamingChecks(): Promise<void> {
-    // Initial check
+    // Cancel any existing interval
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+    }
+
+    // Initial check for all accounts
     await this.checkStreamStatus();
 
-    // Get the configured check interval
-    const checkIntervalMs = this.configService.getCheckInterval();
+    // Set up smart polling timer
+    this.scheduleNextCheck();
 
-    // Set up interval for regular checks using the configured interval
-    this.checkInterval = setInterval(async () => {
-      await this.checkStreamStatus();
-    }, checkIntervalMs);
-
-    console.log(`Stream checks started with ${checkIntervalMs / 1000 / 60} minute interval`);
+    console.log('Smart polling engine started');
   }
+
+  private scheduleNextCheck(): void {
+    if (this.checkInterval) {
+      clearTimeout(this.checkInterval);
+    }
+
+    const accounts = this.configService.getAccounts();
+    const smartConfig = this.configService.getSmartChecking();
+    const now = Date.now();
+
+    // Find the account that needs to be checked next
+    let nextCheckTime = Infinity;
+    
+    for (const account of accounts) {
+      if (account.nextCheckTime && account.nextCheckTime < nextCheckTime) {
+        nextCheckTime = account.nextCheckTime;
+      }
+    }
+
+    // If no specific time set, use default interval
+    if (nextCheckTime === Infinity) {
+      nextCheckTime = now + smartConfig.offlineCheckInterval;
+    }
+
+    const delay = Math.max(0, nextCheckTime - now);
+    
+    this.checkInterval = setTimeout(async () => {
+      await this.checkStreamStatus();
+      this.scheduleNextCheck();
+    }, delay);
+
+    console.log(`Next check scheduled in ${Math.round(delay / 1000)} seconds`);
+  }
+
   private async checkStreamStatus(): Promise<void> {
     if (!this.notificationsEnabled) return;
 
     try {
       const accounts = this.configService.getAccounts();
-      const statusUpdates = await this.streamerService.checkMultipleStreamers(accounts);
+      const smartConfig = this.configService.getSmartChecking();
+      const now = Date.now();
+      
+      // Filter accounts that need checking
+      const accountsToCheck = accounts.filter(account => {
+        // If no nextCheckTime set, check it
+        if (!account.nextCheckTime) return true;
+        
+        // Check if it's time to check this account
+        return account.nextCheckTime <= now;
+      });
 
-      // Update account statuses in config
+      if (accountsToCheck.length === 0) {
+        console.log('No accounts need checking at this time');
+        return;
+      }
+
+      console.log(`Checking ${accountsToCheck.length} accounts`);
+      const statusUpdates = await this.streamerService.checkMultipleStreamers(accountsToCheck);
+
+      // Update account statuses and calculate next check times
       for (const update of statusUpdates) {
-        this.configService.updateAccount(update.account.id, {
+        const account = accounts.find(a => a.id === update.account.id);
+        if (!account) continue;
+
+        const isOnline = update.isLive;
+
+        // Update basic account info
+        const accountUpdate: Partial<StreamerAccount> = {
           lastStatus: update.account.lastStatus,
           lastChecked: update.account.lastChecked
-        });
+        };
+
+        // Calculate next check time and update polling state
+        if (isOnline) {
+          // Stream is online
+          if (smartConfig.disableOnlineChecks) {
+            // Don't schedule next check if online checks are disabled
+            accountUpdate.nextCheckTime = undefined;
+            accountUpdate.currentCheckInterval = undefined;
+            accountUpdate.consecutiveOfflineChecks = 0;
+          } else {
+            // Use online check interval
+            accountUpdate.nextCheckTime = this.calculateNextCheckTime(
+              smartConfig.onlineCheckInterval,
+              smartConfig.jitterPercentage
+            );
+            accountUpdate.currentCheckInterval = smartConfig.onlineCheckInterval;
+            accountUpdate.consecutiveOfflineChecks = 0;
+          }
+        } else {
+          // Stream is offline
+          const consecutiveOffline = (account.consecutiveOfflineChecks || 0) + 1;
+          
+          // Calculate interval with exponential backoff
+          let interval = smartConfig.offlineCheckInterval;
+          if (consecutiveOffline > 1) {
+            interval = Math.min(
+              smartConfig.offlineCheckInterval * Math.pow(smartConfig.exponentialBackoffMultiplier, consecutiveOffline - 1),
+              smartConfig.backoffMaxInterval
+            );
+          }
+
+          accountUpdate.nextCheckTime = this.calculateNextCheckTime(interval, smartConfig.jitterPercentage);
+          accountUpdate.currentCheckInterval = interval;
+          accountUpdate.consecutiveOfflineChecks = consecutiveOffline;
+        }
+
+        this.configService.updateAccount(account.id, accountUpdate);
       }
 
       // Check if any streamers are live
@@ -460,6 +569,7 @@ class StreamerAlertsApp {
         this.updateTrayIcon(hasLiveStreamers);
       }
 
+      // Show notifications for newly live streamers
       for (const update of statusUpdates) {
         if (update.isLive && update.justWentLive) {
           this.showLiveNotification(update);
@@ -474,6 +584,13 @@ class StreamerAlertsApp {
       console.error('Error checking stream status:', error);
     }
   }
+
+  private calculateNextCheckTime(intervalMs: number, jitterPercentage: number): number {
+    const jitter = (Math.random() - 0.5) * 2 * (jitterPercentage / 100);
+    const jitteredInterval = intervalMs * (1 + jitter);
+    return Date.now() + Math.max(1000, jitteredInterval); // Minimum 1 second
+  }
+
   private showLiveNotification(streamer: StreamerStatus): void {
     if (!this.notificationsEnabled || !Notification.isSupported()) return;
 
@@ -499,49 +616,46 @@ class StreamerAlertsApp {
 
     try {
       const credentials = this.configService.getApiCredentials();
+      const strategies = this.configService.getStrategies();
 
-      // Validate each platform's tokens
-      if (credentials.twitch.isLoggedIn) {
+      // Validate each platform's tokens only if strategy is 'api'
+      if (credentials.twitch.isLoggedIn && strategies.twitch === 'api') {
         const twitchValid = await this.oauthService.validateAndRefreshToken('twitch');
         if (!twitchValid) {
           console.log('Twitch token validation failed - user will need to re-authenticate');
         } else {
           console.log('Twitch token validated successfully');
         }
+      } else if (strategies.twitch === 'scrape') {
+        console.log('Twitch strategy is set to scrape - skipping token validation');
       }
 
-      if (credentials.youtube.isLoggedIn) {
+      if (credentials.youtube.isLoggedIn && strategies.youtube === 'api') {
         const youtubeValid = await this.oauthService.validateAndRefreshToken('youtube');
         if (!youtubeValid) {
           console.log('YouTube token validation failed - user will need to re-authenticate');
         } else {
           console.log('YouTube token validated successfully');
         }
+      } else if (strategies.youtube === 'scrape') {
+        console.log('YouTube strategy is set to scrape - skipping token validation');
       }
 
-      if (credentials.kick.isLoggedIn) {
+      if (credentials.kick.isLoggedIn && strategies.kick === 'api') {
         const kickValid = await this.oauthService.validateAndRefreshToken('kick');
         if (!kickValid) {
           console.log('Kick token validation failed - user will need to re-authenticate');
         } else {
           console.log('Kick token validated successfully');
         }
+      } else if (strategies.kick === 'scrape') {
+        console.log('Kick strategy is set to scrape - skipping token validation');
       }
     } catch (error) {
       console.error('Error validating stored tokens:', error);
     }
   }
 
-  private restartStreamingChecks(): void {
-    // Clear existing interval if it exists
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
-
-    // Start streaming checks with new interval
-    this.startStreamingChecks();
-  }
 }
 
 // Prevent multiple instances
