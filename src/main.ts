@@ -60,6 +60,7 @@ class StreamerAlertsApp {
     app.whenReady().then(async () => {
       this.createTray();
       await this.validateStoredTokens();
+      this.initializeAutoLaunch();
       this.startStreamingChecks();
     });
 
@@ -120,6 +121,13 @@ class StreamerAlertsApp {
           this.checkInterval = null;
         }
       }
+    });
+
+    // Launch on startup IPC handlers
+    ipcMain.handle('config:getLaunchOnStartup', () => this.configService.isLaunchOnStartupEnabled());
+    ipcMain.handle('config:setLaunchOnStartup', (_, enabled) => {
+      this.configService.setLaunchOnStartupEnabled(enabled);
+      this.setAutoLaunch(enabled);
     });
 
     // API Credentials IPC handlers
@@ -432,6 +440,25 @@ class StreamerAlertsApp {
   private toggleNotifications(): void {
     this.notificationsEnabled = !this.notificationsEnabled;
     this.configService.setNotificationsEnabled(this.notificationsEnabled);
+  }
+
+  private setAutoLaunch(enabled: boolean): void {
+    try {
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        name: 'Streamer Alerts',
+        path: process.execPath
+      });
+      logger.info(`Auto-launch ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      logger.error('Failed to set auto-launch:', error);
+    }
+  }
+
+  private initializeAutoLaunch(): void {
+    // Apply the stored auto-launch setting on app start
+    const enabled = this.configService.isLaunchOnStartupEnabled();
+    this.setAutoLaunch(enabled);
   }
 
   private async startStreamingChecks(): Promise<void> {

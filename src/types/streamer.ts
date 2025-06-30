@@ -74,6 +74,7 @@ export interface SmartCheckingConfig {
 export interface AppConfig {
   accounts: StreamerAccount[];
   notificationsEnabled: boolean;
+  launchOnStartup: boolean;
   checkInterval: number; // Legacy - kept for backward compatibility
   smartChecking: SmartCheckingConfig;
   windowSettings: {

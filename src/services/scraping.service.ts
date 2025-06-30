@@ -98,8 +98,10 @@ export class ScrapingService {
     try {
       const page = await this.getTwitchPage();
       await page.goto(`https://www.twitch.tv/${username}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      const isLive = await page.locator('span[class*="CoreText"]', { hasText: 'LIVE' })
-        .waitFor({ state: 'visible', timeout: 5000 })
+      const isLiveLoctator = await page.locator('span[class*="CoreText"]:has-text("LIVE")')
+
+      const isLive = await isLiveLoctator
+        .waitFor({ state: 'visible', timeout: 20000 })
         .then(() => true)
         .catch(() => false);
 
@@ -192,8 +194,8 @@ export class ScrapingService {
         // Extract title, with fallback to page title
         title = await page.locator('span[data-testid="livestream-title"]')
           .first().textContent()
-          .then(t => t || '')
-          .catch(() => '');
+          .then(t => t?.trim() || '')
+          .catch(async () => '');
       }
 
       return { isLive, title };

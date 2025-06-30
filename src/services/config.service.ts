@@ -17,6 +17,7 @@ export class ConfigService {
       defaults: {
         accounts: [],
         notificationsEnabled: true,
+        launchOnStartup: false, // Default to not launching on startup
         checkInterval: 120000, // 2 minutes - kept for backward compatibility
         smartChecking: {
           onlineCheckInterval: 30, // 30 minutes
@@ -113,6 +114,14 @@ export class ConfigService {
 
   public setNotificationsEnabled(enabled: boolean): void {
     this.store.set('notificationsEnabled', enabled);
+  }
+
+  public isLaunchOnStartupEnabled(): boolean {
+    return this.store.get('launchOnStartup', false);
+  }
+
+  public setLaunchOnStartupEnabled(enabled: boolean): void {
+    this.store.set('launchOnStartup', enabled);
   }
 
   public getWindowSettings(): { width: number; height: number } {

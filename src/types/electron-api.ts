@@ -22,6 +22,8 @@ export interface NotificationStrategies {
 export interface ElectronAPI {
   getNotificationsEnabled: () => Promise<boolean>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
+  getLaunchOnStartup: () => Promise<boolean>;
+  setLaunchOnStartup: (enabled: boolean) => Promise<void>;
   getStrategies: () => Promise<PlatformStrategies>;
   setStrategies: (strategies: PlatformStrategies) => Promise<void>;
   setPlatformStrategy: (platform: keyof PlatformStrategies, strategy: PlatformStrategies[keyof PlatformStrategies]) => Promise<void>;

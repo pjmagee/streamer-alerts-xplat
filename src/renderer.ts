@@ -54,6 +54,12 @@ class StreamerAlertsRenderer {
       window.electronAPI.setNotificationsEnabled(target.checked);
     });
 
+    const launchOnStartupCheckbox = document.getElementById('launchOnStartup') as HTMLInputElement;
+    launchOnStartupCheckbox?.addEventListener('change', (e) => {
+      const target = e.target as HTMLInputElement;
+      window.electronAPI.setLaunchOnStartup(target.checked);
+    });
+
     // Strategy controls
     const strategyRadios = document.querySelectorAll('input[name$="Strategy"]');
     strategyRadios.forEach(radio => {
@@ -278,13 +284,19 @@ class StreamerAlertsRenderer {
   async loadSettings(): Promise<void> {
     try {
       const notificationsEnabled = await window.electronAPI.getNotificationsEnabled();
+      const launchOnStartup = await window.electronAPI.getLaunchOnStartup();
       const strategies = await window.electronAPI.getStrategies();
       const smartCheckingConfig = await window.electronAPI.getSmartChecking();
 
       const notificationsCheckbox = document.getElementById('notificationsEnabled') as HTMLInputElement;
+      const launchOnStartupCheckbox = document.getElementById('launchOnStartup') as HTMLInputElement;
 
       if (notificationsCheckbox) {
         notificationsCheckbox.checked = notificationsEnabled;
+      }
+
+      if (launchOnStartupCheckbox) {
+        launchOnStartupCheckbox.checked = launchOnStartup;
       }
 
       // Load strategy settings
