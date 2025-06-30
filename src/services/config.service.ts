@@ -214,7 +214,6 @@ export class ConfigService {
   }
 
   // Logout functions
-
   public logoutTwitch(): void {
     const credentials = this.getApiCredentials();
     credentials.twitch = {

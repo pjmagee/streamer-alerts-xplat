@@ -242,11 +242,11 @@ class StreamerAlertsApp {
     ipcMain.handle('config:setSmartChecking', (_, config) => this.configService.setSmartChecking(config));
     ipcMain.handle('config:updateSmartCheckingSetting', (_, key, value) => this.configService.updateSmartCheckingSetting(key, value));
   }
+
   private createTray(): void {
-    // Use appropriately sized icons for each platform
+
     let iconName: string;
     if (process.platform === 'win32') {
-      // On Windows, try ICO first, then fallback to PNG
       iconName = 'icon.ico'; // Use main ICO for Windows tray
     } else if (process.platform === 'darwin') {
       iconName = 'tray-icon-32.png'; // Use 32px icon for macOS
@@ -414,11 +414,6 @@ class StreamerAlertsApp {
       this.mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
     }
 
-    // Open dev tools in development mode
-    if (!app.isPackaged) {
-      this.mainWindow.webContents.openDevTools();
-    }
-
     this.mainWindow.once('ready-to-show', () => {
       this.mainWindow?.show();
     });
@@ -456,7 +451,6 @@ class StreamerAlertsApp {
   }
 
   private initializeAutoLaunch(): void {
-    // Apply the stored auto-launch setting on app start
     const enabled = this.configService.isLaunchOnStartupEnabled();
     this.setAutoLaunch(enabled);
   }
@@ -677,7 +671,8 @@ class StreamerAlertsApp {
       title: '🔴 Streamer is Live!',
       body: `${streamer.displayName} is now live on ${streamer.platform}!\n${streamer.title || 'No title'}`,
       icon: iconPath,
-      silent: false
+      silent: false,
+      urgency: 'normal'
     });
 
     notification.on('click', () => {
