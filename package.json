@@ -1,7 +1,7 @@
 {
   "name": "streamer-alerts-xplat",
   "productName": "Streamer Alerts",
-  "version": "1.0.1",
+  "version": "0.0.1",
   "description": "A desktop app for streamer live notifications",
   "main": ".vite/build/main.js",
   "scripts": {
