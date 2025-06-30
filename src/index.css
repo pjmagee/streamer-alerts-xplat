@@ -465,6 +465,44 @@ main {
     opacity: 0.5;
 }
 
+/* Animation for when streamer just went live */
+.account-item.just-went-live {
+    animation: liveAlert 2s ease-in-out;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+}
+
+@keyframes liveAlert {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+}
+
+/* Enhanced live status styling */
+.account-item .status-indicator.status-live {
+    animation: livePulse 2s infinite ease-in-out;
+}
+
+@keyframes livePulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
 /* Accounts list container */
 .accounts-list {
     display: flex;

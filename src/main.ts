@@ -464,7 +464,7 @@ class StreamerAlertsApp {
 
     // If no specific time set, use default interval
     if (nextCheckTime === Infinity) {
-      nextCheckTime = now + smartConfig.offlineCheckInterval;
+      nextCheckTime = now + (smartConfig.offlineCheckInterval * 60 * 1000); // Convert minutes to ms
     }
 
     const delay = Math.max(0, nextCheckTime - now);
@@ -556,11 +556,11 @@ class StreamerAlertsApp {
           } else {
             // Use online check interval
             const nextCheck = this.calculateNextCheckTime(
-              smartConfig.onlineCheckInterval,
+              smartConfig.onlineCheckInterval * 60 * 1000, // Convert minutes to ms
               smartConfig.jitterPercentage
             );
             accountUpdate.nextCheckTime = nextCheck;
-            accountUpdate.currentCheckInterval = smartConfig.onlineCheckInterval;
+            accountUpdate.currentCheckInterval = smartConfig.onlineCheckInterval * 60 * 1000; // Store as ms for consistency
             accountUpdate.consecutiveOfflineChecks = 0;
             
             const nextCheckMinutes = Math.round((nextCheck - now) / 1000 / 60);
@@ -571,12 +571,13 @@ class StreamerAlertsApp {
           const consecutiveOffline = (account.consecutiveOfflineChecks || 0) + 1;
           
           // Calculate interval with exponential backoff
-          let interval = smartConfig.offlineCheckInterval;
+          let interval = smartConfig.offlineCheckInterval * 60 * 1000; // Convert minutes to ms
           if (consecutiveOffline > 1) {
-            interval = Math.min(
-              smartConfig.offlineCheckInterval * Math.pow(smartConfig.exponentialBackoffMultiplier, consecutiveOffline - 1),
-              smartConfig.backoffMaxInterval
-            );
+            const exponentialInterval = (smartConfig.offlineCheckInterval * 60 * 1000) * Math.pow(smartConfig.exponentialBackoffMultiplier, consecutiveOffline - 1);
+            logger.debug(`  🔢 ${update.displayName}: Exponential calculation: ${smartConfig.offlineCheckInterval}min * ${smartConfig.exponentialBackoffMultiplier}^${consecutiveOffline - 1} = ${exponentialInterval}ms`);
+            
+            interval = Math.min(exponentialInterval, smartConfig.backoffMaxInterval * 60 * 1000); // Convert max to ms
+            logger.debug(`  📏 ${update.displayName}: Capped interval: Math.min(${exponentialInterval}, ${smartConfig.backoffMaxInterval * 60 * 1000}) = ${interval}ms`);
           }
 
           const nextCheck = this.calculateNextCheckTime(interval, smartConfig.jitterPercentage);
@@ -587,9 +588,16 @@ class StreamerAlertsApp {
           const nextCheckMinutes = Math.round((nextCheck - now) / 1000 / 60);
           const intervalMinutes = Math.round(interval / 1000 / 60);
           logger.info(`  ⏰ ${update.displayName}: Next offline check in ~${nextCheckMinutes} minutes (interval: ${intervalMinutes}min, attempt #${consecutiveOffline})`);
+          logger.debug(`  🔍 ${update.displayName}: Raw values - interval: ${interval}ms, nextCheck: ${nextCheck}, now: ${now}`);
         }
 
+        // Update the config service
         this.configService.updateAccount(account.id, accountUpdate);
+        
+        // Update the account object in the status update so renderer gets the latest timing info
+        update.account.nextCheckTime = accountUpdate.nextCheckTime;
+        update.account.currentCheckInterval = accountUpdate.currentCheckInterval;
+        update.account.consecutiveOfflineChecks = accountUpdate.consecutiveOfflineChecks;
       }
 
       // Check if any streamers are live

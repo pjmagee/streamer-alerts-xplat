@@ -19,10 +19,10 @@ export class ConfigService {
         notificationsEnabled: true,
         checkInterval: 120000, // 2 minutes - kept for backward compatibility
         smartChecking: {
-          onlineCheckInterval: 1800000, // 30 minutes in milliseconds (more responsive)
-          offlineCheckInterval: 180000, // 3 minutes in milliseconds (faster initial checks)
+          onlineCheckInterval: 30, // 30 minutes
+          offlineCheckInterval: 3, // 3 minutes
           exponentialBackoffMultiplier: 1.8, // More aggressive backoff than 1.5
-          backoffMaxInterval: 2700000, // 45 minutes in milliseconds (reasonable max)
+          backoffMaxInterval: 45, // 45 minutes
           jitterPercentage: 15, // Better spread of API requests
           disableOnlineChecks: false, // Keep checking online channels by default
           resetStatusOnAppClose: false // Preserve status across app restarts
@@ -276,10 +276,10 @@ export class ConfigService {
 
   public getSmartChecking(): SmartCheckingConfig {
     return this.store.get('smartChecking', {
-      onlineCheckInterval: 1800000,  // 30 minutes in milliseconds
-      offlineCheckInterval: 180000,  // 3 minutes in milliseconds  
+      onlineCheckInterval: 30,  // 30 minutes
+      offlineCheckInterval: 3,  // 3 minutes  
       exponentialBackoffMultiplier: 1.8,
-      backoffMaxInterval: 2700000,   // 45 minutes in milliseconds
+      backoffMaxInterval: 45,   // 45 minutes
       jitterPercentage: 15,
       disableOnlineChecks: false,
       resetStatusOnAppClose: false

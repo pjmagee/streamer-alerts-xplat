@@ -187,7 +187,7 @@ class StreamerAlertsRenderer {
         target.value = '120';
       }
       
-      await window.electronAPI.updateSmartCheckingSetting('onlineCheckInterval', minutes * 60000);
+      await window.electronAPI.updateSmartCheckingSetting('onlineCheckInterval', minutes);
     });
 
     // Offline check interval
@@ -205,7 +205,7 @@ class StreamerAlertsRenderer {
         target.value = '30';
       }
       
-      await window.electronAPI.updateSmartCheckingSetting('offlineCheckInterval', minutes * 60000);
+      await window.electronAPI.updateSmartCheckingSetting('offlineCheckInterval', minutes);
     });
 
     // Exponential backoff multiplier
@@ -241,7 +241,7 @@ class StreamerAlertsRenderer {
         target.value = '240';
       }
       
-      await window.electronAPI.updateSmartCheckingSetting('backoffMaxInterval', minutes * 60000);
+      await window.electronAPI.updateSmartCheckingSetting('backoffMaxInterval', minutes);
     });
 
     // Jitter percentage
@@ -755,14 +755,79 @@ class StreamerAlertsRenderer {
   }
 
   handleStreamStatusUpdates(statusUpdates: StreamerStatus[]): void {
-    // Update the UI with real-time status updates
+    logger.info('📺 Updating UI with real-time stream status updates...');
+    
     statusUpdates.forEach(status => {
-      const accountElement = document.querySelector(`[data-id="${status.account.id}"] .account-status`);
-      if (accountElement) {
-        accountElement.className = `account-status ${status.isLive ? 'live' : 'offline'}`;
-        accountElement.textContent = status.isLive ? 'Live' : 'Offline';
+      const accountElement = document.querySelector(`[data-account-id="${status.account.id}"]`);
+      if (!accountElement) {
+        logger.warn(`Could not find UI element for account: ${status.account.id}`);
+        return;
+      }
+
+      logger.info(`  Updating ${status.displayName}: ${status.isLive ? 'LIVE' : 'OFFLINE'}`);
+
+      // Update status indicator (the colored dot)
+      const statusIndicator = accountElement.querySelector('.status-indicator');
+      if (statusIndicator) {
+        statusIndicator.className = `status-indicator status-${status.isLive ? 'live' : 'offline'}`;
+      }
+
+      // Update status badge (the text)
+      const statusBadge = accountElement.querySelector('.status-badge');
+      if (statusBadge) {
+        statusBadge.className = `status-badge status-${status.isLive ? 'live' : 'offline'}`;
+        statusBadge.textContent = status.isLive ? 'LIVE' : 'Offline';
+      }
+
+      // Update timing information in real-time
+      this.updateAccountTimingInfo(accountElement, status.account);
+
+      // Add visual feedback for newly live streamers
+      if (status.isLive && status.justWentLive) {
+        logger.info(`  🎉 ${status.displayName} just went live! Adding animation...`);
+        accountElement.classList.add('just-went-live');
+        // Remove the animation class after a few seconds
+        setTimeout(() => {
+          accountElement.classList.remove('just-went-live');
+        }, 5000);
+      }
+
+      // Update the local accounts array to keep it in sync
+      const localAccount = this.accounts.find(a => a.id === status.account.id);
+      if (localAccount) {
+        localAccount.lastStatus = status.account.lastStatus;
+        localAccount.lastChecked = status.account.lastChecked;
+        localAccount.nextCheckTime = status.account.nextCheckTime;
+        localAccount.currentCheckInterval = status.account.currentCheckInterval;
+        localAccount.consecutiveOfflineChecks = status.account.consecutiveOfflineChecks;
       }
     });
+  }
+
+  private updateAccountTimingInfo(accountElement: Element, account: StreamerAccount): void {
+    // Update last checked time
+    const lastCheckedElement = accountElement.querySelector('.timing-card:nth-child(1) .timing-value');
+    if (lastCheckedElement) {
+      lastCheckedElement.textContent = this.formatLastChecked(account.lastChecked);
+    }
+
+    // Update next check time
+    const nextCheckElement = accountElement.querySelector('.timing-card:nth-child(2) .timing-value');
+    if (nextCheckElement) {
+      nextCheckElement.textContent = this.formatNextCheck(account.nextCheckTime);
+    }
+
+    // Update current interval
+    const intervalElement = accountElement.querySelector('.timing-card:nth-child(3) .timing-value');
+    if (intervalElement) {
+      intervalElement.textContent = this.formatInterval(account.currentCheckInterval);
+    }
+
+    // Update consecutive offline checks
+    const offlineChecksElement = accountElement.querySelector('.timing-card:nth-child(4) .timing-value');
+    if (offlineChecksElement) {
+      offlineChecksElement.textContent = String(account.consecutiveOfflineChecks || 0);
+    }
   }
 
   showError(message: string): void {
@@ -773,15 +838,13 @@ class StreamerAlertsRenderer {
     // Online check interval
     const onlineCheckIntervalInput = document.getElementById('onlineCheckInterval') as HTMLInputElement;
     if (onlineCheckIntervalInput && config.onlineCheckInterval) {
-      const minutes = Math.round(config.onlineCheckInterval / 60000);
-      onlineCheckIntervalInput.value = String(minutes);
+      onlineCheckIntervalInput.value = String(config.onlineCheckInterval); // Already in minutes
     }
 
     // Offline check interval
     const offlineCheckIntervalInput = document.getElementById('offlineCheckInterval') as HTMLInputElement;
     if (offlineCheckIntervalInput && config.offlineCheckInterval) {
-      const minutes = Math.round(config.offlineCheckInterval / 60000);
-      offlineCheckIntervalInput.value = String(minutes);
+      offlineCheckIntervalInput.value = String(config.offlineCheckInterval); // Already in minutes
     }
 
     // Exponential backoff multiplier
@@ -795,8 +858,7 @@ class StreamerAlertsRenderer {
     // Backoff max interval
     const backoffMaxIntervalInput = document.getElementById('backoffMaxInterval') as HTMLInputElement;
     if (backoffMaxIntervalInput && config.backoffMaxInterval) {
-      const minutes = Math.round(config.backoffMaxInterval / 60000);
-      backoffMaxIntervalInput.value = String(minutes);
+      backoffMaxIntervalInput.value = String(config.backoffMaxInterval); // Already in minutes
     }
 
     // Jitter percentage
