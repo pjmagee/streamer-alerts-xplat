@@ -6,7 +6,7 @@ test('YouTube scraping returns proper structure', async () => {
   const scrapingService = new ScrapingService();
   try {
     const result = await scrapingService.checkYouTubeStream('@GBNewsOnline');
-    console.log('YouTube result:', result);
+    console.log('YouTube @GBNewsOnline result:', result);
     
     // Verify the structure
     assert.strictEqual(typeof result.isLive, 'boolean');

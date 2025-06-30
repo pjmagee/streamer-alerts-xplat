@@ -192,11 +192,8 @@ export class ScrapingService {
         // Extract title, with fallback to page title
         title = await page.locator('span[data-testid="livestream-title"]')
           .first().textContent()
-          .then(t => t?.trim() || '')
-          .catch(async () => {
-            const fullTitle = await page.title();
-            return fullTitle.replace(' - Kick', '').trim();
-          });
+          .then(t => t || '')
+          .catch(() => '');
       }
 
       return { isLive, title };

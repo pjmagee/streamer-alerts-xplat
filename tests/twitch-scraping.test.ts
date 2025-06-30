@@ -5,8 +5,8 @@ import { ScrapingService } from '../src/services/scraping.service';
 test('Twitch scraping returns proper structure', async () => {
   const scrapingService = new ScrapingService();
   try {
-    const result = await scrapingService.checkTwitchStream('grubby');
-    console.log('Twitch result:', result);
+    const result = await scrapingService.checkTwitchStream('asmongold247');
+    console.log('Twitch asmongold247 result:', result);
     
     // Verify the structure
     assert.strictEqual(typeof result.isLive, 'boolean');

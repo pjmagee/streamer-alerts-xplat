@@ -61,6 +61,22 @@ function parseConfig(configData: Record<string, string>): AppCredentials {
   };
 }
 
+// Default/empty credentials for when config files are missing
+function getDefaultCredentials(): AppCredentials {
+  return {
+    twitch: {
+      clientId: ''
+    },
+    youtube: {
+      clientId: ''
+    },
+    kick: {
+      clientId: '',
+      clientSecret: ''
+    }
+  };
+}
+
 // Load configuration based on environment
 function loadConfig(): AppCredentials {
   // Check if we're in development by looking for webpack/vite dev indicators
@@ -111,17 +127,20 @@ function loadConfig(): AppCredentials {
       }
       
       if (!foundPath) {
-        throw new Error(`Configuration file not found: ${configPath} (also tried alternative paths)`);
+        logger.warn(`Configuration file not found: ${configPath} (also tried alternative paths). Using default empty credentials.`);
+        return getDefaultCredentials();
       }
       
       configPath = foundPath;
     }
 
     const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    logger.info('Successfully loaded configuration');
     return parseConfig(configData);
   } catch (error) {
     logger.error('Failed to load configuration:', error);
-    throw new Error(`Failed to load configuration from ${configPath}: ${error}`);
+    logger.warn('Using default empty credentials due to config load failure');
+    return getDefaultCredentials();
   }
 }
 

@@ -5,8 +5,8 @@ import { ScrapingService } from '../src/services/scraping.service';
 test('Kick scraping returns proper structure', async () => {
   const scrapingService = new ScrapingService();
   try {
-    const result = await scrapingService.checkKickStream('esfandtv');
-    console.log('Kick result:', result);
+    const result = await scrapingService.checkKickStream('mike-stutesman');
+    console.log('Kick mike-stutesman result:', result);
     
     // Verify the structure
     assert.strictEqual(typeof result.isLive, 'boolean');

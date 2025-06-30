@@ -7,23 +7,44 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { PublisherGithub } from '@electron-forge/publisher-github';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Helper function to get resources that actually exist
+function getExtraResources(): string[] {
+  const baseResources = [
+    'images/tray-icon.png',      
+    'images/tray-icon-16.png',
+    'images/tray-icon-32.png',
+    'images/tray-icon-64.png',
+    'images/tray-icon-alert.png',
+    'images/tray-icon-alert-16.png',
+    'images/tray-icon-alert-32.png',
+    'images/tray-icon-alert-64.png'
+  ];
+
+  const configFiles = [
+    'config/config.local.json',
+    'config/config.prod.json'
+  ];
+
+  // Only include config files if they exist
+  const existingConfigFiles = configFiles.filter(file => {
+    const exists = fs.existsSync(path.resolve(file));
+    console.log(`Config file ${file}: ${exists ? 'EXISTS' : 'MISSING'}`);
+    return exists;
+  });
+
+  return [...baseResources, ...existingConfigFiles];
+}
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     icon: '/images/icon', // no file extension required - Forge will add .ico/.icns/.png automatically
-    extraResource: [
-      'config/config.local.json',
-      'config/config.prod.json',
-      'images/tray-icon.png',      
-      'images/tray-icon-16.png',
-      'images/tray-icon-32.png',
-      'images/tray-icon-64.png',
-      'images/tray-icon-alert.png',
-      'images/tray-icon-alert-16.png',
-      'images/tray-icon-alert-32.png',
-      'images/tray-icon-alert-64.png'
-    ],
+    extraResource: getExtraResources(),
+    executableName: 'streamer-alerts-xplat', // Ensure consistent executable name across platforms
+    appCopyright: 'Patrick Magee',
   },
   rebuildConfig: {},
   makers: [
@@ -83,7 +104,9 @@ const config: ForgeConfig = {
         name: 'streamer-alerts-xplat'
       },
       prerelease: false,
-      draft: true
+      draft: true,
+      generateReleaseNotes: true,
+      authToken: process.env.GH_TOKEN
     })
   ]
 };

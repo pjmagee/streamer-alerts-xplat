@@ -10,15 +10,10 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "test:scripts": "tsx --test scripts",
-    "test": "tsx --test tests/*.test.ts",
-    "test:watch": "tsx --test --watch tests",
-    "test-notification": "electron scripts/run-notification-test.js",
-    "cleanup-data": "tsx scripts/cleanup-data.ts"
+    "test": "tsx --test",
+    "test:watch": "tsx --test --watch tests"
   },
   "keywords": [
-    "electron",
-    "typescript",
     "twitch",
     "youtube",
     "kick",
