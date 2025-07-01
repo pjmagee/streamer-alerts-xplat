@@ -90,7 +90,7 @@ const config: ForgeConfig = {
         name: 'streamer-alerts-xplat'
       },
       prerelease: false,
-      draft: true,
+      draft: false, // Must be false for auto-updates to work
       generateReleaseNotes: true,
       authToken: process.env.GH_TOKEN
     })

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, Notification, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { updateElectronApp } from 'update-electron-app';
 import { 
   StreamerService, 
   ConfigService,
@@ -50,6 +51,16 @@ class StreamerAlertsApp {
     this.streamerService = new StreamerService();
     this.configService = new ConfigService();
     this.oauthService = new OAuthService(this.configService);
+    
+    // Initialize auto-update for production builds
+    if (app.isPackaged) {
+      updateElectronApp({
+        updateInterval: '1 hour',
+        logger: console, // Use console for update-electron-app logging
+        notifyUser: true
+      });
+    }
+    
     this.setupApp();
     this.setupIPC();
   }

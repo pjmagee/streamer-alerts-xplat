@@ -2,6 +2,15 @@
 
 A desktop application for notifications when channels go live on YouTube, Twitch and Kick
 
+## Features
+
+- 🔴 **Live Stream Notifications** - Get notified when your favorite streamers go live
+- 🌐 **Multi-Platform Support** - Supports Twitch, YouTube, and Kick
+- 🤖 **Smart Checking** - Intelligent polling with exponential backoff to reduce unnecessary checks
+- 🔐 **OAuth Integration** - Secure authentication with platform APIs
+- 🔄 **Auto-Updates** - Automatic updates via GitHub releases
+- ⚙️ **Flexible Configuration** - Choose between API or scraping strategies per platform
+
 ## Technology
 
 - [Electron](https://www.electronjs.org/)
@@ -9,6 +18,25 @@ A desktop application for notifications when channels go live on YouTube, Twitch
 - [Vite](https://vitejs.dev/)
 - [Playwright](https://playwright.dev/)
 - [TypeScript](https://www.typescriptlang.org/)
+
+## Auto-Updates
+
+This application supports automatic updates using GitHub releases:
+
+- Updates are checked every hour when the app is running in production
+- When an update is available, you'll be notified and can choose to install it
+- Updates are downloaded in the background and applied after restart
+- Only published (non-draft, non-prerelease) releases trigger updates
+
+### For Developers
+
+To publish a new version:
+
+1. Update the version: `npm run version:patch` (or `version:minor`/`version:major`)
+   - This automatically creates a git tag and commits the version change
+2. Push the tag to GitHub: `git push origin --tags`
+3. GitHub Actions will automatically build and publish the release for all platforms
+4. Make sure the release is published (not draft) for auto-updates to work
 
 ## Kick Authorization
 

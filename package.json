@@ -11,7 +11,11 @@
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
     "test": "tsx --test",
-    "test:watch": "tsx --test --watch tests"
+    "test:watch": "tsx --test --watch tests",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major",
+    "release": "npm run make && npm run publish"
   },
   "keywords": [
     "twitch",
@@ -23,6 +27,10 @@
   "author": {
     "name": "Patrick Magee",
     "email": "patrick.magee@live.co.uk"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pjmagee/streamer-alerts-xplat.git"
   },
   "license": "MIT",
   "devDependencies": {
@@ -55,6 +63,7 @@
     "electron-store": "^8.1.0",
     "playwright": "^1.53.1",
     "sharp": "^0.34.2",
+    "update-electron-app": "^3.1.1",
     "winston": "^3.17.0"
   }
 }
