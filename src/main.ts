@@ -132,8 +132,15 @@ class StreamerAlertsApp {
 
     // API Credentials IPC handlers
     ipcMain.handle('config:getApiCredentials', () => this.configService.getApiCredentials());
-    ipcMain.handle('config:setApiCredentials', (_, credentials) => this.configService.setApiCredentials(credentials));    // OAuth IPC handlers for all platforms
+    ipcMain.handle('config:setApiCredentials', (_, credentials) => this.configService.setApiCredentials(credentials));
+    ipcMain.handle('config:getKickClientSecret', () => this.configService.getKickClientSecret());
 
+    // User API Credentials IPC handlers
+    ipcMain.handle('config:setUserApiCredentials', (_, credentials) => this.configService.setUserApiCredentials(credentials));
+    ipcMain.handle('config:updateUserApiCredential', (_, platform, value) => this.configService.updateUserApiCredential(platform, value));
+    ipcMain.handle('config:hasUserApiCredentials', () => this.configService.hasUserApiCredentials());
+
+    // OAuth IPC handlers for all platforms
     ipcMain.handle('oauth:authenticateTwitch', async () => {
       try {
         const success = await this.oauthService.loginTwitch();
@@ -230,6 +237,20 @@ class StreamerAlertsApp {
     // Shell methods
     ipcMain.handle('shell:openExternal', (_, url: string) => {
       shell.openExternal(url);
+    });
+
+    // Open config directory
+    ipcMain.handle('shell:openConfigDirectory', async () => {
+      try {
+        const configDir = this.configService.getConfigDirectory();
+        logger.info('Opening config directory:', configDir);
+        
+        await shell.openPath(configDir);
+        logger.info('Successfully opened config directory');
+      } catch (error) {
+        logger.error('Failed to open config directory:', error);
+        throw error;
+      }
     });
 
     // Strategy IPC handlers
@@ -476,16 +497,25 @@ class StreamerAlertsApp {
 
     // Find the account that needs to be checked next
     let nextCheckTime = Infinity;
+    let hasAccountsWithoutSchedule = false;
     
     for (const account of accounts) {
       if (account.nextCheckTime && account.nextCheckTime < nextCheckTime) {
         nextCheckTime = account.nextCheckTime;
+      } else if (!account.nextCheckTime) {
+        // Account has no schedule (likely reset or new)
+        hasAccountsWithoutSchedule = true;
       }
     }
 
-    // If no specific time set, use default interval
-    if (nextCheckTime === Infinity) {
+    // If we have accounts without schedule, check them immediately
+    if (hasAccountsWithoutSchedule) {
+      nextCheckTime = now + 5000; // 5 seconds delay to allow UI to load
+      logger.info(`⏳ Found accounts without schedule - checking in 5 seconds`);
+    } else if (nextCheckTime === Infinity) {
+      // If no specific time set and no unscheduled accounts, use default interval
       nextCheckTime = now + (smartConfig.offlineCheckInterval * 60 * 1000); // Convert minutes to ms
+      logger.info(`⏳ No scheduled checks found - using default interval`);
     }
 
     const delay = Math.max(0, nextCheckTime - now);

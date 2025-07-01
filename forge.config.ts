@@ -7,8 +7,6 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { PublisherGithub } from '@electron-forge/publisher-github';
-import * as fs from 'fs';
-import * as path from 'path';
 
 // Helper function to get resources that actually exist
 function getExtraResources(): string[] {
@@ -23,19 +21,7 @@ function getExtraResources(): string[] {
     'images/tray-icon-alert-64.png'
   ];
 
-  const configFiles = [
-    'config/config.local.json',
-    'config/config.prod.json'
-  ];
-
-  // Only include config files if they exist
-  const existingConfigFiles = configFiles.filter(file => {
-    const exists = fs.existsSync(path.resolve(file));
-    console.log(`Config file ${file}: ${exists ? 'EXISTS' : 'MISSING'}`);
-    return exists;
-  });
-
-  return [...baseResources, ...existingConfigFiles];
+  return baseResources;
 }
 
 const config: ForgeConfig = {

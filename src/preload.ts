@@ -18,6 +18,7 @@ const electronAPI: ElectronAPI = {
   setPlatformStrategy: (platform, strategy) => ipcRenderer.invoke('config:setPlatformStrategy', platform, strategy),
   getApiCredentials: () => ipcRenderer.invoke('config:getApiCredentials'),
   setApiCredentials: (credentials) => ipcRenderer.invoke('config:setApiCredentials', credentials),
+  getKickClientSecret: () => ipcRenderer.invoke('config:getKickClientSecret'),
   getSmartChecking: () => ipcRenderer.invoke('config:getSmartChecking'),
   setSmartChecking: (config) => ipcRenderer.invoke('config:setSmartChecking', config),
   updateSmartCheckingSetting: (key, value) => ipcRenderer.invoke('config:updateSmartCheckingSetting', key, value),
@@ -30,8 +31,13 @@ const electronAPI: ElectronAPI = {
   checkStreamStatus: (account) => ipcRenderer.invoke('stream:checkStatus', account),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
-  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),  
-  onStreamStatusUpdate: (callback) => ipcRenderer.on('stream:statusUpdate', (_, data) => callback(data))
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  openConfigDirectory: () => ipcRenderer.invoke('shell:openConfigDirectory'),  
+  onStreamStatusUpdate: (callback) => ipcRenderer.on('stream:statusUpdate', (_, data) => callback(data)),
+  getUserApiCredentials: () => ipcRenderer.invoke('config:getUserApiCredentials'),
+  setUserApiCredentials: (credentials) => ipcRenderer.invoke('config:setUserApiCredentials', credentials),
+  updateUserApiCredential: (platform, value) => ipcRenderer.invoke('config:updateUserApiCredential', platform, value),
+  hasUserApiCredentials: () => ipcRenderer.invoke('config:hasUserApiCredentials'),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

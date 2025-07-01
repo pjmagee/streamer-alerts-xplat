@@ -19,6 +19,7 @@ class StreamerAlertsRenderer {
     await this.loadSettings();
     await this.loadAccounts();
     await this.loadApiCredentials();
+    await this.loadUserApiCredentials();
     
     // Start timing updates for account information
     this.startTimingUpdates();
@@ -81,6 +82,23 @@ class StreamerAlertsRenderer {
 
     // Platform specific handlers
     this.setupApiHandlers();
+
+    // User API Credentials event listeners
+    const saveCredentialsBtn = document.getElementById('saveCredentialsBtn');
+    const clearCredentialsBtn = document.getElementById('clearCredentialsBtn');
+    const openConfigBtn = document.getElementById('openConfigBtn');
+    
+    saveCredentialsBtn?.addEventListener('click', () => this.saveUserApiCredentials());
+    clearCredentialsBtn?.addEventListener('click', () => this.clearUserApiCredentials());
+    openConfigBtn?.addEventListener('click', () => this.openConfigDirectory());
+    
+    // Make testCredential function available globally for onclick handlers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).testCredential = (platform: string) => this.testCredential(platform as 'twitch' | 'youtube' | 'kick');
+    
+    // Make openDeveloperPortal function available globally for onclick handlers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).openDeveloperPortal = (url: string) => this.openDeveloperPortal(url);
   }
 
   setupModals(): void {
@@ -327,6 +345,26 @@ class StreamerAlertsRenderer {
     }
   }
 
+  async loadUserApiCredentials(): Promise<void> {
+    try {
+      const credentials = await window.electronAPI.getApiCredentials();
+      const kickSecret = await window.electronAPI.getKickClientSecret();
+      
+      const twitchInput = document.getElementById('twitchClientId') as HTMLInputElement;
+      const youtubeInput = document.getElementById('youtubeClientId') as HTMLInputElement;
+      const kickClientIdInput = document.getElementById('kickClientId') as HTMLInputElement;
+      const kickClientSecretInput = document.getElementById('kickClientSecret') as HTMLInputElement;
+      
+      if (twitchInput) twitchInput.value = credentials.twitch.clientId || '';
+      if (youtubeInput) youtubeInput.value = credentials.youtube.clientId || '';
+      if (kickClientIdInput) kickClientIdInput.value = credentials.kick.clientId || '';
+      if (kickClientSecretInput) kickClientSecretInput.value = kickSecret || '';
+      
+    } catch (error) {
+      console.error('Failed to load user API credentials:', error);
+    }
+  }
+
   loadStrategies(strategies: PlatformStrategies): void {
     // Load Twitch strategy
     const twitchScrape = document.getElementById('twitchScrape') as HTMLInputElement;
@@ -491,8 +529,8 @@ class StreamerAlertsRenderer {
   }
 
   createAccountHTML(account: StreamerAccount): string {
-    const statusClass = account.lastStatus === 'live' ? 'live' : 'offline';
-    const statusText = account.lastStatus === 'live' ? 'LIVE' : 'Offline';
+    const statusClass = account.lastStatus === 'live' ? 'live' : (account.lastStatus === undefined ? 'unknown' : 'offline');
+    const statusText = account.lastStatus === 'live' ? 'LIVE' : (account.lastStatus === undefined ? 'Unknown' : 'Offline');
     const enabledClass = account.enabled ? 'enabled' : 'disabled';
     const toggleText = account.enabled ? 'Disable' : 'Enable';
     
@@ -605,7 +643,7 @@ class StreamerAlertsRenderer {
     const lastChecked = new Date(account.lastChecked);
     const diffMinutes = Math.floor((now.getTime() - lastChecked.getTime()) / (1000 * 60));
     
-    let statusText = account.lastStatus === 'live' ? 'Live' : 'Offline';
+    let statusText = account.lastStatus === 'live' ? 'Live' : (account.lastStatus === undefined ? 'Unknown' : 'Offline');
     
     if (diffMinutes < 5) {
       statusText += ' (just checked)';
@@ -1252,6 +1290,91 @@ class StreamerAlertsRenderer {
     setTimeout(() => {
       card.classList.remove('updated');
     }, 500);
+  }
+
+  // User API Credentials Management
+  async saveUserApiCredentials(): Promise<void> {
+    try {
+      const twitchInput = document.getElementById('twitchClientId') as HTMLInputElement;
+      const youtubeInput = document.getElementById('youtubeClientId') as HTMLInputElement;
+      const kickClientIdInput = document.getElementById('kickClientId') as HTMLInputElement;
+      const kickClientSecretInput = document.getElementById('kickClientSecret') as HTMLInputElement;
+      
+      const credentials = {
+        twitch: twitchInput?.value?.trim() || '',
+        youtube: youtubeInput?.value?.trim() || '',
+        kick: {
+          clientId: kickClientIdInput?.value?.trim() || '',
+          clientSecret: kickClientSecretInput?.value?.trim() || ''
+        }
+      };
+      
+      await window.electronAPI.setUserApiCredentials(credentials);
+      
+      // Show success message
+      this.showNotification('API credentials saved successfully!', 'success');
+      
+    } catch (error) {
+      console.error('Failed to save user API credentials:', error);
+      this.showNotification('Failed to save API credentials', 'error');
+    }
+  }
+
+  async clearUserApiCredentials(): Promise<void> {
+    try {
+      const credentials = {
+        twitch: '',
+        youtube: '',
+        kick: { clientId: '', clientSecret: '' }
+      };
+      
+      await window.electronAPI.setUserApiCredentials(credentials);
+      await this.loadUserApiCredentials(); // Reload to clear UI
+      
+      this.showNotification('API credentials cleared', 'info');
+      
+    } catch (error) {
+      console.error('Failed to clear user API credentials:', error);
+      this.showNotification('Failed to clear API credentials', 'error');
+    }
+  }
+
+  testCredential(platform: 'twitch' | 'youtube' | 'kick'): void {
+    // Simple validation for now - in a real app you'd test the API connection
+    let input: HTMLInputElement | null = null;
+    
+    switch (platform) {
+      case 'twitch':
+        input = document.getElementById('twitchClientId') as HTMLInputElement;
+        break;
+      case 'youtube':
+        input = document.getElementById('youtubeClientId') as HTMLInputElement;
+        break;
+      case 'kick':
+        input = document.getElementById('kickClientId') as HTMLInputElement;
+        break;
+    }
+    
+    if (input && input.value.trim()) {
+      this.showNotification(`${platform} credentials look valid!`, 'success');
+    } else {
+      this.showNotification(`Please enter ${platform} credentials first`, 'info');
+    }
+  }
+
+  openDeveloperPortal(url: string): void {
+    // Use the IPC system to open the URL in the user's default browser
+    window.electronAPI.openExternal(url);
+  }
+
+  async openConfigDirectory(): Promise<void> {
+    try {
+      await window.electronAPI.openConfigDirectory();
+      this.showNotification('Config folder opened in file explorer', 'success');
+    } catch (error) {
+      console.error('Failed to open config directory:', error);
+      this.showNotification('Failed to open config folder', 'error');
+    }
   }
 }
 

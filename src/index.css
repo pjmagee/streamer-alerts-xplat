@@ -747,6 +747,11 @@ main {
     color: white;
 }
 
+.status-badge.status-unknown {
+    background: #fbd38d;
+    color: #744210;
+}
+
 .platform-badge {
     padding: 3px 10px;
     border-radius: 15px;
@@ -806,6 +811,11 @@ main {
     background: #a0aec0;
 }
 
+.status-indicator.status-unknown {
+    background: #fbd38d;
+    animation: unknownPulse 3s infinite ease-in-out;
+}
+
 @keyframes pulse {
     0% {
         box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.7);
@@ -815,6 +825,15 @@ main {
     }
     100% {
         box-shadow: 0 0 0 0 rgba(72, 187, 120, 0);
+    }
+}
+
+@keyframes unknownPulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
     }
 }
 
@@ -1248,3 +1267,166 @@ input:checked + .toggle-slider:before {
   font-weight: 600;
   text-align: right;
 }
+
+/* API Credentials Setup Section */
+.api-credentials-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border: 1px solid #e9ecef;
+}
+
+.api-credentials-section h3 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 1.2rem;
+}
+
+.section-help {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.credentials-grid {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.credential-group {
+    background: white;
+    border-radius: 6px;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.credential-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.credential-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: #495057;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.btn-link:hover {
+    background-color: #e3f2fd;
+    text-decoration: none;
+}
+
+.credential-form {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.credential-form label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.credential-input {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+}
+
+.credential-input:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.credential-input[type="password"] {
+    letter-spacing: 0.1em;
+}
+
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+}
+
+.credential-help {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.credential-help code {
+    background: #e9ecef;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    color: #495057;
+}
+
+.credentials-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.section-divider {
+    border: none;
+    height: 1px;
+    background: #e9ecef;
+    margin: 25px 0;
+}
+
+.oauth-login-section h3 {
+    margin: 0 0 10px 0;
+    color: #495057;
+    font-size: 1.2rem;
+}
+
+/* Data Management Tab */
+.data-management-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.data-location-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.data-path {
+    font-family: 'Courier New', monospace;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    font-size: 13px;
+    color: #495057;
+}
+
+

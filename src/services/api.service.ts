@@ -1,7 +1,6 @@
 import { TwitchStreamResponse } from '../types/streamer';
 import { ConfigService } from './config.service';
 import { OAuthService } from './oauth.service';
-import { EMBEDDED_CREDENTIALS } from '../config';
 import logger from '../utils/logger';
 
 export class ApiService {
@@ -20,6 +19,12 @@ export class ApiService {
     if (!credentials.twitch.isLoggedIn || !credentials.twitch.accessToken) {
       logger.debug(`Skipping Twitch check for ${username}: User not authenticated with Twitch`);
       throw new Error('AUTHENTICATION_REQUIRED');
+    }
+
+    // Check if user has configured Twitch credentials
+    if (!credentials.twitch.clientId) {
+      logger.debug(`Skipping Twitch check for ${username}: User has not configured Twitch client ID`);
+      throw new Error('CREDENTIALS_NOT_CONFIGURED');
     }
 
     // Check if token has expired and refresh if needed
@@ -42,7 +47,7 @@ export class ApiService {
       // Use the specific Twitch endpoint: https://api.twitch.tv/helix/streams?user_login={user_name}&type=live
       const response = await fetch(`https://api.twitch.tv/helix/streams?user_login=${username}&type=live`, {
         headers: {
-          'Client-ID': EMBEDDED_CREDENTIALS.twitch.clientId,
+          'Client-ID': credentials.twitch.clientId,
           'Authorization': `Bearer ${credentials.twitch.accessToken}`
         }
       });

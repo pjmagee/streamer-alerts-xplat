@@ -22,6 +22,7 @@
                 <button class="tab-button" data-tab="strategy">📊 Strategy</button>
                 <button class="tab-button" data-tab="api">🔑 API</button>
                 <button class="tab-button" data-tab="accounts">👥 Accounts</button>
+                <button class="tab-button" data-tab="data">💾 Data</button>
             </nav>
 
             <!-- Settings Tab -->
@@ -182,7 +183,76 @@
             <div id="api-tab" class="tab-content">
                 <section class="api-section">                
                     <h2>🔑 API Configuration</h2>
-                    <p class="api-help">Please log in to each platform you want to monitor when using API strategy.</p>
+                    
+                    <!-- API Credentials Setup Section -->
+                    <div class="api-credentials-section">
+                        <h3>🛠️ API Credentials Setup</h3>
+                        <p class="section-help">To use API features, you need to create your own app credentials for each platform. This gives you better rate limits and full control over your API usage.</p>
+                        
+                        <div class="credentials-grid">
+                            <div class="credential-group">
+                                <div class="credential-header">
+                                    <h4>🟣 Twitch</h4>
+                                    <button type="button" class="btn btn-link" onclick="openDeveloperPortal('https://dev.twitch.tv/')">
+                                        🔗 Create Twitch App
+                                    </button>
+                                </div>
+                                <div class="credential-form">
+                                    <label for="twitchClientId">Client ID:</label>
+                                    <input type="text" id="twitchClientId" placeholder="Enter your Twitch Client ID" class="credential-input">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="testCredential('twitch')">Test</button>
+                                </div>
+                                <p class="credential-help">Create an app at <strong>dev.twitch.tv</strong> → OAuth Redirect URLs: <code>http://localhost:8080</code></p>
+                            </div>
+
+                            <div class="credential-group">
+                                <div class="credential-header">
+                                    <h4>🔴 YouTube</h4>
+                                    <button type="button" class="btn btn-link" onclick="openDeveloperPortal('https://console.cloud.google.com/')">
+                                        🔗 Create Google Cloud Project
+                                    </button>
+                                </div>
+                                <div class="credential-form">
+                                    <label for="youtubeClientId">Client ID:</label>
+                                    <input type="text" id="youtubeClientId" placeholder="Enter your YouTube Client ID" class="credential-input">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="testCredential('youtube')">Test</button>
+                                </div>
+                                <p class="credential-help">Enable <strong>YouTube Data API v3</strong> → Create OAuth 2.0 credentials → Redirect URI: <code>http://localhost:8080</code></p>
+                            </div>
+
+                            <div class="credential-group">
+                                <div class="credential-header">
+                                    <h4>🟢 Kick</h4>
+                                    <button type="button" class="btn btn-link" onclick="openDeveloperPortal('https://dev.kick.com/')">
+                                        🔗 Create Kick App
+                                    </button>
+                                </div>
+                                <div class="credential-form">
+                                    <label for="kickClientId">Client ID:</label>
+                                    <input type="text" id="kickClientId" placeholder="Enter your Kick Client ID" class="credential-input">
+                                    <div></div> <!-- Empty cell for grid alignment -->
+                                </div>
+                                <div class="credential-form">
+                                    <label for="kickClientSecret">Client Secret:</label>
+                                    <input type="password" id="kickClientSecret" placeholder="Enter your Kick Client Secret" class="credential-input">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="testCredential('kick')">Test</button>
+                                </div>
+                                <p class="credential-help">Create an app at <strong>dev.kick.com</strong> → Redirect URI: <code>http://localhost:8080</code></p>
+                            </div>
+                        </div>
+
+                        <div class="credentials-actions">
+                            <button type="button" class="btn btn-primary" id="saveCredentialsBtn">💾 Save All Credentials</button>
+                            <button type="button" class="btn btn-secondary" id="clearCredentialsBtn">🗑️ Clear All</button>
+                        </div>
+                    </div>
+
+                    <hr class="section-divider">
+
+                    <!-- OAuth Login Section -->
+                    <div class="oauth-login-section">
+                        <h3>🔐 Platform Authentication</h3>
+                        <p class="api-help">After setting up your credentials above, log in to each platform you want to monitor when using API strategy.</p>
                     
                     <div class="api-group">
                         <h3>🟣 Twitch</h3>
@@ -243,6 +313,44 @@
 
                     <div id="accountsList" class="accounts-list">
                         <!-- Accounts will be dynamically added here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Data Tab -->
+            <div id="data-tab" class="tab-content">
+                <section class="data-management-section">
+                    <h2>💾 Data Management</h2>
+                    <p class="section-help">Manage your app data, configuration files, and storage settings.</p>
+                    
+                    <div class="data-management-grid">
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label>
+                                    App configuration files:
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <button type="button" class="btn btn-secondary" id="openConfigBtn">
+                                    📁 Open Config Folder
+                                </button>
+                                <span class="setting-help">Access your app settings, credentials, and data files</span>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label>
+                                    Data storage location:
+                                    <span class="info-icon">ℹ️</span>
+                                </label>
+                                <div class="data-location-info">
+                                    <span class="data-path">Electron Store managed automatically</span>
+                                    <span class="setting-help">Configuration data is stored securely using Electron's built-in storage</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+
                     </div>
                 </section>
             </div>

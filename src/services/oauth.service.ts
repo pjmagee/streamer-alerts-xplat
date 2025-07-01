@@ -1,5 +1,5 @@
 import { shell } from 'electron';
-import { EMBEDDED_CREDENTIALS, OAUTH_CONFIG } from '../config';
+import { OAUTH_CONFIG } from '../config';
 import { ConfigService } from './config.service';
 import { createHash, randomBytes } from 'crypto';
 import * as http from 'http';
@@ -11,6 +11,19 @@ export class OAuthService {
 
   constructor(configService: ConfigService) {
     this.configService = configService;
+  }
+
+  /**
+   * Get user API credentials from config service
+   */
+  private getUserCredentials() {
+    const credentials = this.configService.getApiCredentials();
+    const kickSecret = this.configService.getKickClientSecret();
+    return {
+      twitch: { clientId: credentials.twitch.clientId },
+      youtube: { clientId: credentials.youtube.clientId },
+      kick: { clientId: credentials.kick.clientId, clientSecret: kickSecret }
+    };
   }
 
   /**
@@ -43,7 +56,7 @@ export class OAuthService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: EMBEDDED_CREDENTIALS.twitch.clientId,
+          client_id: this.getUserCredentials().twitch.clientId,
           scopes: OAUTH_CONFIG.scopes.twitch.join(' '),
         }),
       });
@@ -97,7 +110,7 @@ export class OAuthService {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
-            client_id: EMBEDDED_CREDENTIALS.twitch.clientId,
+            client_id: this.getUserCredentials().twitch.clientId,
             device_code: deviceCode,
             grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
           }),
@@ -110,7 +123,7 @@ export class OAuthService {
           const userResponse = await fetch('https://api.twitch.tv/helix/users', {
             headers: {
               'Authorization': `Bearer ${tokenData.access_token}`,
-              'Client-Id': EMBEDDED_CREDENTIALS.twitch.clientId,
+              'Client-Id': this.getUserCredentials().twitch.clientId,
             },
           });
 
@@ -128,7 +141,7 @@ export class OAuthService {
             Date.now() + (tokenData.expires_in * 1000),
             user.login,        // username for API calls
             user.display_name, // display name for UI
-            EMBEDDED_CREDENTIALS.twitch.clientId // clientId
+            this.getUserCredentials().twitch.clientId // clientId
           );
 
           return true;
@@ -166,7 +179,7 @@ export class OAuthService {
 
       const { server, redirectUri, codePromise } = await this.createCallbackServer(state);
       const authUrl = new URL(OAUTH_CONFIG.endpoints.youtube.authorize);
-      authUrl.searchParams.set('client_id', EMBEDDED_CREDENTIALS.youtube.clientId);
+      authUrl.searchParams.set('client_id', this.getUserCredentials().youtube.clientId);
       authUrl.searchParams.set('redirect_uri', redirectUri);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('scope', OAUTH_CONFIG.scopes.youtube.join(' '));
@@ -200,7 +213,7 @@ export class OAuthService {
   private async exchangeYouTubeCode(code: string, codeVerifier: string, redirectUri: string): Promise<boolean> {
     try {
       const requestBody = new URLSearchParams({
-        client_id: EMBEDDED_CREDENTIALS.youtube.clientId,
+        client_id: this.getUserCredentials().youtube.clientId,
         code: code,
         grant_type: 'authorization_code',
         redirect_uri: redirectUri,
@@ -209,7 +222,7 @@ export class OAuthService {
 
       logger.debug('YouTube token exchange request:');
       logger.debug('Endpoint:', OAUTH_CONFIG.endpoints.youtube.token);
-      logger.debug('Client ID:', EMBEDDED_CREDENTIALS.youtube.clientId);
+      logger.debug('Client ID:', this.getUserCredentials().youtube.clientId);
       logger.debug('Redirect URI:', redirectUri);
       logger.debug('Code length:', code.length);
       logger.debug('Code verifier length:', codeVerifier.length);
@@ -256,7 +269,7 @@ export class OAuthService {
         tokenData.refresh_token,
         Date.now() + (tokenData.expires_in * 1000),
         channel.snippet.title,  // display name for UI
-        EMBEDDED_CREDENTIALS.youtube.clientId
+        this.getUserCredentials().youtube.clientId
       );
 
       return true;
@@ -284,7 +297,7 @@ export class OAuthService {
       const { server, redirectUri, codePromise } = await this.createCallbackServer(state);
 
       const authUrl = new URL(OAUTH_CONFIG.endpoints.kick.authorize);
-      authUrl.searchParams.set('client_id', EMBEDDED_CREDENTIALS.kick.clientId);
+      authUrl.searchParams.set('client_id', this.getUserCredentials().kick.clientId);
       authUrl.searchParams.set('redirect_uri', redirectUri);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('scope', OAUTH_CONFIG.scopes.kick.join(' '));
@@ -323,8 +336,8 @@ export class OAuthService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: EMBEDDED_CREDENTIALS.kick.clientId,
-          client_secret: EMBEDDED_CREDENTIALS.kick.clientSecret,
+          client_id: this.getUserCredentials().kick.clientId,
+          client_secret: this.getUserCredentials().kick.clientSecret,
           code: code,
           grant_type: 'authorization_code',
           redirect_uri: redirectUri,
@@ -437,7 +450,7 @@ export class OAuthService {
         Date.now() + (tokenData.expires_in * 1000),
         userData.username,              // username for API calls
         userData.display_name || userData.username,  // display name for UI (fallback to username)
-        EMBEDDED_CREDENTIALS.kick.clientId
+        this.getUserCredentials().kick.clientId
       );
 
       return true;
@@ -464,7 +477,7 @@ export class OAuthService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: EMBEDDED_CREDENTIALS.twitch.clientId,
+          client_id: this.getUserCredentials().twitch.clientId,
           grant_type: 'refresh_token',
           refresh_token: credentials.twitch.refreshToken,
         }),
@@ -505,7 +518,7 @@ export class OAuthService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: EMBEDDED_CREDENTIALS.youtube.clientId,
+          client_id: this.getUserCredentials().youtube.clientId,
           grant_type: 'refresh_token',
           refresh_token: credentials.youtube.refreshToken,
         }),
@@ -545,8 +558,8 @@ export class OAuthService {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: EMBEDDED_CREDENTIALS.kick.clientId,
-          client_secret: EMBEDDED_CREDENTIALS.kick.clientSecret,
+          client_id: this.getUserCredentials().kick.clientId,
+          client_secret: this.getUserCredentials().kick.clientSecret,
           grant_type: 'refresh_token',
           refresh_token: credentials.kick.refreshToken,
         }),
@@ -568,7 +581,7 @@ export class OAuthService {
         Date.now() + (tokenData.expires_in * 1000),
         credentials.kick.username,
         credentials.kick.displayName,
-        EMBEDDED_CREDENTIALS.kick.clientId
+        this.getUserCredentials().kick.clientId
       );
 
       return true;
@@ -623,7 +636,7 @@ export class OAuthService {
     // Revoke token if available
     if (credentials.twitch.accessToken) {
       try {
-        await fetch(`https://id.twitch.tv/oauth2/revoke?client_id=${EMBEDDED_CREDENTIALS.twitch.clientId}&token=${credentials.twitch.accessToken}`, {
+        await fetch(`https://id.twitch.tv/oauth2/revoke?client_id=${this.getUserCredentials().twitch.clientId}&token=${credentials.twitch.accessToken}`, {
           method: 'POST',
         });
       } catch (error) {
@@ -662,7 +675,6 @@ export class OAuthService {
     // Just clear the stored tokens
     this.configService.logoutKick();
   }
-
   /**
    * Create a temporary local server to handle OAuth redirects
    */
@@ -670,83 +682,102 @@ export class OAuthService {
     return new Promise((resolve, reject) => {
       const server = http.createServer();
 
-      server.listen(0, 'localhost', () => {
-        const address = server.address();
-        if (!address || typeof address === 'string') {
-          reject(new Error('Failed to get server address'));
-          return;
-        }
+      // Try port 8080 first (as instructed in UI), then fall back to any available port
+      const tryPort = (targetPort: number) => {
+        server.listen(targetPort, 'localhost', () => {
+          const address = server.address();
+          if (!address || typeof address === 'string') {
+            reject(new Error('Failed to get server address'));
+            return;
+          }
 
-        const port = address.port;
-        const redirectUri = `http://localhost:${port}/callback`;
+          const port = address.port;
+          const redirectUri = `http://localhost:${port}/callback`;
 
-        const codePromise = new Promise<string>((resolveCode, rejectCode) => {
-          server.on('request', (req, res) => {
-            const parsedUrl = url.parse(req.url || '', true);
+          // Warn if we had to use a different port than expected
+          if (port !== 8080) {
+            logger.warn(`OAuth callback server using port ${port} instead of 8080. Make sure your OAuth app is configured with redirect URI: ${redirectUri}`);
+          }
 
-            if (parsedUrl.pathname === '/callback') {
-              const code = parsedUrl.query.code as string;
-              const state = parsedUrl.query.state as string;
-              const error = parsedUrl.query.error as string;
+          const codePromise = new Promise<string>((resolveCode, rejectCode) => {
+            server.on('request', (req, res) => {
+              const parsedUrl = url.parse(req.url || '', true);
 
-              // Send response to browser
-              res.writeHead(200, { 'Content-Type': 'text/html' });
-              if (error) {
-                res.end(`
-                  <html>
-                    <body>
-                      <h2>Authentication Failed</h2>
-                      <p>Error: ${error}</p>
-                      <p>You can close this window.</p>
-                    </body>
-                  </html>
-                `);
-                rejectCode(new Error(`OAuth error: ${error}`));
-              } else if (!code) {
-                res.end(`
-                  <html>
-                    <body>
-                      <h2>Authentication Failed</h2>
-                      <p>No authorization code received</p>
-                      <p>You can close this window.</p>
-                    </body>
-                  </html>
-                `);
-                rejectCode(new Error('No authorization code received'));
-              } else if (state !== expectedState) {
-                res.end(`
-                  <html>
-                    <body>
-                      <h2>Authentication Failed</h2>
-                      <p>Security error: State mismatch</p>
-                      <p>You can close this window.</p>
-                    </body>
-                  </html>
-                `);
-                rejectCode(new Error('State mismatch - possible CSRF attack'));
-              } else {
-                res.end(`
-                  <html>
-                    <body>
-                      <h2>Authentication Successful!</h2>
-                      <p>You can close this window and return to the application.</p>
-                      <script>window.close();</script>
-                    </body>
-                  </html>
-                `);
-                resolveCode(code);
+              if (parsedUrl.pathname === '/callback') {
+                const code = parsedUrl.query.code as string;
+                const state = parsedUrl.query.state as string;
+                const error = parsedUrl.query.error as string;
+
+                // Send response to browser
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                if (error) {
+                  res.end(`
+                    <html>
+                      <body>
+                        <h2>Authentication Failed</h2>
+                        <p>Error: ${error}</p>
+                        <p>You can close this window.</p>
+                      </body>
+                    </html>
+                  `);
+                  rejectCode(new Error(`OAuth error: ${error}`));
+                } else if (!code) {
+                  res.end(`
+                    <html>
+                      <body>
+                        <h2>Authentication Failed</h2>
+                        <p>No authorization code received</p>
+                        <p>You can close this window.</p>
+                      </body>
+                    </html>
+                  `);
+                  rejectCode(new Error('No authorization code received'));
+                } else if (state !== expectedState) {
+                  res.end(`
+                    <html>
+                      <body>
+                        <h2>Authentication Failed</h2>
+                        <p>Security error: State mismatch</p>
+                        <p>You can close this window.</p>
+                      </body>
+                    </html>
+                  `);
+                  rejectCode(new Error('State mismatch - possible CSRF attack'));
+                } else {
+                  res.end(`
+                    <html>
+                      <body>
+                        <h2>Authentication Successful!</h2>
+                        <p>You can close this window and return to the application.</p>
+                        <script>window.close();</script>
+                      </body>
+                    </html>
+                  `);
+                  resolveCode(code);
+                }
+
+                // Close server after handling the request
+                setTimeout(() => server.close(), 1000);
               }
-
-              // Close server after handling the request
-              setTimeout(() => server.close(), 1000);
-            }
+            });
           });
+
+          resolve({ server, redirectUri, codePromise });
         });
 
-        resolve({ server, redirectUri, codePromise });
-      });
-
-      server.on('error', reject);
+        server.on('error', (err: NodeJS.ErrnoException) => {
+          if (err.code === 'EADDRINUSE' && targetPort === 8080) {
+            // Port 8080 is busy, try any available port
+            logger.warn('Port 8080 is in use, falling back to any available port');
+            server.removeAllListeners('error');
+            tryPort(0); // Use any available port
+          } else {
+            reject(err);
+          }
+        });
+      };
+      
+      tryPort(8080); // Start by trying port 8080
     });
   }
 }

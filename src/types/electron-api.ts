@@ -35,6 +35,7 @@ export interface ElectronAPI {
   
   getApiCredentials: () => Promise<ApiCredentials>;
   setApiCredentials: (credentials: ApiCredentials) => Promise<void>;
+  getKickClientSecret: () => Promise<string>;
   authenticateTwitch: () => Promise<AuthResult>;
   logoutTwitch: () => Promise<void>;
   authenticateYouTube: () => Promise<AuthResult>;
@@ -49,7 +50,14 @@ export interface ElectronAPI {
   closeWindow: () => Promise<void>;
   minimizeWindow: () => Promise<void>;
   openExternal: (url: string) => Promise<void>;
+  openConfigDirectory: () => Promise<void>;
   onStreamStatusUpdate: (callback: (data: StreamerStatus[]) => void) => void;
+
+  // User API Credentials
+  getUserApiCredentials: () => Promise<{ twitch: string; youtube: string; kick: { clientId: string; clientSecret: string } }>;
+  setUserApiCredentials: (credentials: { twitch: string; youtube: string; kick: { clientId: string; clientSecret: string } }) => Promise<void>;
+  updateUserApiCredential: (platform: 'twitch' | 'youtube' | 'kick', value: string | { clientId: string; clientSecret: string }) => Promise<void>;
+  hasUserApiCredentials: () => Promise<boolean>;
 }
 
 declare global {

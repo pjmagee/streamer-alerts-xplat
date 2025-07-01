@@ -1,6 +1,7 @@
 import Store from 'electron-store';
 import { StreamerAccount, AppConfig, ApiCredentials, PlatformStrategies, StreamCheckStrategy, SmartCheckingConfig } from '../types/streamer';
 import { app } from 'electron';
+import path from 'node:path';
 
 export class ConfigService {
   private store: Store<AppConfig>;
@@ -305,6 +306,65 @@ export class ConfigService {
     const currentConfig = this.getSmartChecking();
     currentConfig[key] = value;
     this.setSmartChecking(currentConfig);
+  }
+
+  // User API Credentials Management
+  public setUserApiCredentials(userCredentials: { twitch: string; youtube: string; kick: { clientId: string; clientSecret: string } }): void {
+    const credentials = this.getApiCredentials();
+    
+    // Update the client IDs in the main credentials structure
+    credentials.twitch.clientId = userCredentials.twitch;
+    credentials.youtube.clientId = userCredentials.youtube;
+    credentials.kick.clientId = userCredentials.kick.clientId;
+    
+    this.setApiCredentials(credentials);
+    
+    // Store Kick client secret separately for security (it's sensitive)
+    if (userCredentials.kick.clientSecret) {
+      this.store.set('kickClientSecret', userCredentials.kick.clientSecret);
+    }
+  }
+
+  public getKickClientSecret(): string {
+    return this.store.get('kickClientSecret', '');
+  }
+
+  public updateUserApiCredential(platform: 'twitch' | 'youtube' | 'kick', value: string | { clientId: string; clientSecret: string }): void {
+    const credentials = this.getApiCredentials();
+    
+    if (platform === 'kick' && typeof value === 'object') {
+      credentials.kick.clientId = value.clientId;
+      this.setApiCredentials(credentials);
+      if (value.clientSecret) {
+        this.store.set('kickClientSecret', value.clientSecret);
+      }
+    } else if (platform === 'twitch' && typeof value === 'string') {
+      credentials.twitch.clientId = value;
+      this.setApiCredentials(credentials);
+    } else if (platform === 'youtube' && typeof value === 'string') {
+      credentials.youtube.clientId = value;
+      this.setApiCredentials(credentials);
+    }
+  }
+
+  public hasUserApiCredentials(): boolean {
+    const credentials = this.getApiCredentials();
+    const kickSecret = this.getKickClientSecret();
+    return !!(credentials.twitch.clientId || credentials.youtube.clientId || (credentials.kick.clientId && kickSecret));
+  }
+
+  /**
+   * Get the path to the configuration file for opening in file explorer
+   */
+  public getConfigPath(): string {
+    return this.store.path;
+  }
+
+  /**
+   * Get the directory containing the configuration files
+   */
+  public getConfigDirectory(): string {
+    return path.dirname(this.store.path);
   }
 
   private generateId(): string {
