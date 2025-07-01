@@ -3,6 +3,7 @@ import { ConfigService } from './config.service';
 import { OAuthService } from './oauth.service';
 import { ScrapingService } from './scraping.service';
 import { ApiService } from './api.service';
+import { PlaywrightManagerService } from './playwright-manager.service';
 import logger from '../utils/logger';
 
 export class StreamerService {
@@ -10,12 +11,14 @@ export class StreamerService {
   private oauthService: OAuthService;
   private scrapingService: ScrapingService;
   private apiService: ApiService;
+  private playwrightManager: PlaywrightManagerService;
 
   constructor() {
     this.configService = new ConfigService();
     this.oauthService = new OAuthService(this.configService);
     this.scrapingService = new ScrapingService();
     this.apiService = new ApiService(this.configService, this.oauthService);
+    this.playwrightManager = PlaywrightManagerService.getInstance();
   }
 
   public async checkMultipleStreamers(accounts: StreamerAccount[]): Promise<StreamerStatus[]> {
@@ -62,6 +65,11 @@ export class StreamerService {
     switch (account.platform) {
       case 'twitch':
         if (strategy === 'scrape') {
+          // Check if Playwright browsers are available
+          const canScrape = await this.playwrightManager.ensurePlaywrightForScraping();
+          if (!canScrape) {
+            throw new Error('Scraping is not available. Please install browser binaries or switch to API mode.');
+          }
           const twitchData = await this.scrapingService.checkTwitchStream(account.username);
           isLive = twitchData.isLive;
           title = twitchData.title;
@@ -74,6 +82,11 @@ export class StreamerService {
 
       case 'youtube':
         if (strategy === 'scrape') {
+          // Check if Playwright browsers are available
+          const canScrape = await this.playwrightManager.ensurePlaywrightForScraping();
+          if (!canScrape) {
+            throw new Error('Scraping is not available. Please install browser binaries or switch to API mode.');
+          }
           const youtubeData = await this.scrapingService.checkYouTubeStream(account.username);
           isLive = youtubeData.isLive;
           title = youtubeData.title;
@@ -86,6 +99,11 @@ export class StreamerService {
 
       case 'kick':
         if (strategy === 'scrape') {
+          // Check if Playwright browsers are available
+          const canScrape = await this.playwrightManager.ensurePlaywrightForScraping();
+          if (!canScrape) {
+            throw new Error('Scraping is not available. Please install browser binaries or switch to API mode.');
+          }
           const kickData = await this.scrapingService.checkKickStream(account.username);
           isLive = kickData.isLive;
           title = kickData.title;

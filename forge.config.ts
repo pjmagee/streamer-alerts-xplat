@@ -5,6 +5,7 @@ import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
+import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { PublisherGithub } from '@electron-forge/publisher-github';
 
@@ -25,12 +26,13 @@ function getExtraResources(): string[] {
 }
 
 const config: ForgeConfig = {
+  outDir: './out',
   packagerConfig: {
     asar: true,
     icon: '/images/icon', // no file extension required - Forge will add .ico/.icns/.png automatically
     extraResource: getExtraResources(),
     executableName: 'streamer-alerts-xplat', // Ensure consistent executable name across platforms
-    appCopyright: 'Patrick Magee',
+    appCopyright: 'Patrick Magee'    
   },
   rebuildConfig: {},
   makers: [
@@ -40,7 +42,11 @@ const config: ForgeConfig = {
       setupIcon: './images/icon.ico' // ICO file for Setup.exe
     }), 
     new MakerZIP({}, ['darwin']), 
-    new MakerRpm({}), 
+    new MakerRpm({      
+      options: {
+        icon: './images/icon.png' // PNG file for RPM package
+      }      
+    }), 
     new MakerDeb({
       options: {
         icon: './images/icon.png' // PNG file for Debian package
@@ -48,6 +54,9 @@ const config: ForgeConfig = {
     })
   ],
   plugins: [
+    new AutoUnpackNativesPlugin({
+      // Specify any additional options here
+    }),
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
       // If you are familiar with Vite configuration, it will look really familiar.

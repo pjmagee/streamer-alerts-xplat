@@ -1,9 +1,15 @@
-import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import logger from '../utils/logger';
+import { PlaywrightManagerService } from './playwright-manager.service';
+
+// Dynamic import types for playwright
+type Browser = import('playwright').Browser;
+type Page = import('playwright').Page;
+type BrowserContext = import('playwright').BrowserContext;
 
 export class ScrapingService {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
+  private playwrightManager = PlaywrightManagerService.getInstance();
   
   // Persistent pages for each platform
   private twitchPage: Page | null = null;
@@ -12,6 +18,9 @@ export class ScrapingService {
 
   private async getBrowser(): Promise<Browser> {
     if (!this.browser) {
+      // Get chromium from playwright manager
+      const chromium = await this.playwrightManager.getPlaywrightBrowser();
+      
       this.browser = await chromium.launch({
         headless: true,
         args: [
@@ -163,9 +172,9 @@ export class ScrapingService {
         // Use any anchor with id=video-title for title
         const videoLink = page.locator('a#video-title');
         title = await videoLink.first().getAttribute('title')
-          .then(t => t || '')
+          .then((t: string | null) => t || '')
           .catch(async () => {
-            return videoLink.first().textContent().then(text => text?.trim() || '');
+            return videoLink.first().textContent().then((text: string | null) => text?.trim() || '');
           });
       }
       return { isLive, title };
@@ -194,7 +203,7 @@ export class ScrapingService {
         // Extract title, with fallback to page title
         title = await page.locator('span[data-testid="livestream-title"]')
           .first().textContent()
-          .then(t => t?.trim() || '')
+          .then((t: string | null) => t?.trim() || '')
           .catch(async () => '');
       }
 

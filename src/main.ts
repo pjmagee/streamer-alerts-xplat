@@ -48,26 +48,79 @@ class StreamerAlertsApp {
   private hasLiveStreamers = false; // Track if any streamers are live
 
   constructor() {
-    this.streamerService = new StreamerService();
-    this.configService = new ConfigService();
-    this.oauthService = new OAuthService(this.configService);
+    logger.debug('StreamerAlertsApp constructor called');
     
-    // Initialize auto-update for production builds
-    if (app.isPackaged) {
-      updateElectronApp({
-        updateInterval: '1 hour',
-        logger: console, // Use console for update-electron-app logging
-        notifyUser: true
-      });
+    try {
+      this.streamerService = new StreamerService();
+      this.configService = new ConfigService();
+      this.oauthService = new OAuthService(this.configService);
+      
+      // Initialize auto-update for production builds
+      if (app.isPackaged) {
+        updateElectronApp({
+          updateInterval: '1 hour',
+          logger: console, // Use console for update-electron-app logging
+          notifyUser: true
+        });
+      }
+      
+      this.setupApp();
+      this.setupIPC();
+      
+      logger.debug('StreamerAlertsApp constructor completed successfully');
+    } catch (error) {
+      logger.error('Error in StreamerAlertsApp constructor:', error);
+      throw error;
     }
+  }
+
+  public cleanup(): void {
+    logger.debug('Cleaning up StreamerAlertsApp resources');
     
-    this.setupApp();
-    this.setupIPC();
+    // Clean up check interval
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+
+    // Clean up tray - be more aggressive about cleanup
+    if (this.tray) {
+      logger.debug('Destroying tray during cleanup');
+      try {
+        // Remove all event listeners first
+        this.tray.removeAllListeners();
+        
+        // Check if tray is still valid before destroying
+        if (!this.tray.isDestroyed()) {
+          this.tray.destroy();
+        }
+        
+        // Force null assignment
+        this.tray = null;
+        
+        logger.debug('Tray destroyed successfully');
+      } catch (error) {
+        logger.debug('Error destroying tray:', error);
+        // Force null assignment even if destroy failed
+        this.tray = null;
+      }
+    }
+
+    // Clean up main window
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.destroy();
+      this.mainWindow = null;
+    }
+
+    // Clean up services
+    this.streamerService.cleanup().catch(error => {
+      logger.error('Error cleaning up streamer service:', error);
+    });
+    
+    logger.debug('StreamerAlertsApp cleanup completed');
   }
 
   private setupApp(): void {
-    // App name is already set at module load time
-
     app.whenReady().then(async () => {
       this.createTray();
       await this.validateStoredTokens();
@@ -86,6 +139,8 @@ class StreamerAlertsApp {
     });
 
     app.on('before-quit', async () => {
+      isAppQuitting = true;
+      
       // Clean up resources before quitting
       if (this.checkInterval) {
         clearInterval(this.checkInterval);
@@ -107,11 +162,12 @@ class StreamerAlertsApp {
       }
       
       await this.streamerService.cleanup();
+      
+      // No hot-reload: nothing to clear
     });
   }
 
   private setupIPC(): void {
-
     // Config IPC handlers
     ipcMain.handle('config:getAccounts', () => this.configService.getAccounts());
     ipcMain.handle('config:addAccount', (_, account) => this.configService.addAccount(account));
@@ -276,6 +332,28 @@ class StreamerAlertsApp {
   }
 
   private createTray(): void {
+    logger.debug('createTray() called');
+    
+    // Clean up any existing tray first (prevents multiple trays during hot reload)
+    if (this.tray) {
+      logger.debug('Destroying existing tray before creating new one');
+      try {
+        // Remove all event listeners first
+        this.tray.removeAllListeners();
+        
+        // Check if tray is still valid before destroying
+        if (!this.tray.isDestroyed()) {
+          this.tray.destroy();
+        }
+        
+        this.tray = null;
+        logger.debug('Existing tray destroyed successfully');
+      } catch (error) {
+        logger.debug('Error destroying existing tray:', error);
+        // Force null assignment even if destroy failed
+        this.tray = null;
+      }
+    }
 
     let iconName: string;
     if (process.platform === 'win32') {
@@ -333,18 +411,26 @@ class StreamerAlertsApp {
       }
     }
 
-    this.tray = new Tray(trayIcon);
-    this.tray.setToolTip('Streamer Alerts - Monitor your favorite streamers');
+    // Create the new tray
+    try {
+      this.tray = new Tray(trayIcon);
+      this.tray.setToolTip('Streamer Alerts - Monitor your favorite streamers');
+      
+      logger.debug('Tray created successfully');
 
-    // Left click opens configuration window
-    this.tray.on('click', () => {
-      this.createMainWindow();
-    });
+      // Left click opens configuration window
+      this.tray.on('click', () => {
+        this.createMainWindow();
+      });
 
-    // Right click shows context menu
-    this.tray.on('right-click', () => {
-      this.showTrayContextMenu();
-    });
+      // Right click shows context menu
+      this.tray.on('right-click', () => {
+        this.showTrayContextMenu();
+      });
+    } catch (error) {
+      logger.error('Failed to create tray:', error);
+      this.tray = null;
+    }
   }
 
   private updateTrayIcon(hasLiveStreamers: boolean): void {
@@ -412,6 +498,8 @@ class StreamerAlertsApp {
             clearInterval(this.checkInterval);
           }
           await this.streamerService.cleanup();
+          
+      // No hot-reload: nothing to clear
           app.quit();
         }
       }
