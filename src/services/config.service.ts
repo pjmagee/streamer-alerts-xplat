@@ -326,7 +326,7 @@ export class ConfigService {
   }
 
   public getKickClientSecret(): string {
-    return this.store.get('kickClientSecret', '');
+    return this.store.get('kickClientSecret', '') as string;
   }
 
   public updateUserApiCredential(platform: 'twitch' | 'youtube' | 'kick', value: string | { clientId: string; clientSecret: string }): void {

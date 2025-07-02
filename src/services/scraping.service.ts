@@ -22,8 +22,28 @@ export class ScrapingService {
   private async createPage(): Promise<Page> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
+    
+    // Disable webdriver detection
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+      });
+    });
+    
+    // Set realistic viewport
     await page.setViewport({ width: 1920, height: 1080 });
-    await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+    
+    // Set realistic user agent and headers to avoid bot detection
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.setExtraHTTPHeaders({ 
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'DNT': '1',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+    });
+    
     return page;
   }
 
@@ -85,22 +105,22 @@ export class ScrapingService {
 
       try {
         await page.waitForSelector(liveIndicatorSelector, {visible: true, timeout: 30000 });
-
-        isLive = await page.evaluate(() => {
-          const elements = document.querySelectorAll(liveIndicatorSelector);
-          for (const element of elements) {
-            const text = element.textContent || '';
-            if (text === 'LIVE') {
-              return true;
-            }
-          }
-          return false;
-        });
       } catch (timeoutError) {
         logger.debug(`Timeout waiting for Twitch live indicators for ${username}`);
-        // If we timeout, still try to evaluate without waiting
-        isLive = false;
+        // Continue to evaluate even if we timeout - elements might still be there
       }
+
+      // Always try to evaluate for live status, regardless of timeout
+      isLive = await page.evaluate((selector) => {
+        const elements = document.querySelectorAll(selector);
+        for (const element of elements) {
+          const text = element.textContent || '';
+          if (text === 'LIVE') {
+            return true;
+          }
+        }
+        return false;
+      }, liveIndicatorSelector);
 
       let title = '';
       if (isLive) {
@@ -249,35 +269,49 @@ export class ScrapingService {
   }
 
   public async checkKickStream(username: string): Promise<{ isLive: boolean; title: string }> {
-
     const titleSelector = 'span[data-testid="livestream-title"]';
     const liveIndicatorSelector = 'span';
 
     try {
       const page = await this.getKickPage();
 
-      await page.goto(`https://kick.com/${username}`, { waitUntil: 'load' });
-      await new Promise(resolve => setTimeout(resolve, 10000));
-
+      await page.goto(`https://kick.com/${username}`, { waitUntil: 'networkidle0' });
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Check for LIVE indicator
-      const isLive = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll(liveIndicatorSelector)).some(span =>
-          span.textContent?.includes('LIVE')
-        );
-      }).catch(() => false);
+      let isLive = false;
+      try {
+        await page.waitForSelector(liveIndicatorSelector, { visible: true, timeout: 10000 });
+      } catch {
+        // Continue if timeout occurs
+      }
+
+      // Evaluate for live status
+      isLive = await page.evaluate((selector) => {
+        const spans = Array.from(document.querySelectorAll(selector));
+        return spans.some(span => {
+          const text = span.textContent?.trim();
+          return text === 'LIVE' || 
+                 text === 'Live' ||
+                 (text && text.toUpperCase().includes('LIVE') && text.length <= 10);
+        });
+      }, liveIndicatorSelector);
 
       let title = '';
-      if (isLive) {
-        // Extract title
-        try {
-          const titleElement = await page.$(titleSelector);
-          if (titleElement) {
-            title = await titleElement.evaluate((el: Element) => el.textContent?.trim() || '');
-          }
-        } catch (error) {
-          logger.warn('Could not get Kick stream title:', error);
+      
+      // Get stream title
+      try {
+        const titleElement = await page.$(titleSelector);
+        if (titleElement) {
+          title = await titleElement.evaluate((el: Element) => el.textContent?.trim() || '');
         }
+      } catch (error) {
+        logger.warn('Could not get Kick stream title:', error);
+      }
+
+      // If we found a title, assume the stream is live (since title selector is livestream-specific)
+      if (!isLive && title && title.length > 0) {
+        isLive = true;
       }
 
       return { isLive, title };

@@ -99,8 +99,23 @@ export class PuppeteerManagerService {
       throw new Error('Puppeteer not available - ' + status.message);
     }
 
-    // Let Puppeteer handle browser detection and launching
-    return await puppeteer.launch({ headless: true });
+    // Launch with more stealthy options to avoid bot detection
+    return await puppeteer.launch({ 
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas', 
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-blink-features=AutomationControlled'
+      ],
+      ignoreDefaultArgs: ['--disable-extensions']
+    });
   }
 
   // Reset cached status (useful after user installs Chrome)
