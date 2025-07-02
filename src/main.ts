@@ -16,7 +16,7 @@ let isAppQuitting = false;
 // Helper function to get correct icon path for dev vs packaged
 function getIconPath(iconName: string): string {
   return app.isPackaged
-    ? path.join(process.resourcesPath, 'images', iconName)
+    ? path.join(process.resourcesPath, iconName)
     : path.join(__dirname, '../images', iconName);
 }
 
@@ -518,7 +518,6 @@ class StreamerAlertsApp {
     this.mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
-      icon: getIconPath('icon.png'), // Linux app icon
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
