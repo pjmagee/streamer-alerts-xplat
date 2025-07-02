@@ -1,7 +1,7 @@
 import { defineConfig } from "eslint/config";
 import { fixupConfigRules } from "@eslint/compat";
 import globals from "globals";
-import tsParser from "@typescript-eslint/parser";
+import tsParser from '@typescript-eslint/parser';
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import js from "@eslint/js";

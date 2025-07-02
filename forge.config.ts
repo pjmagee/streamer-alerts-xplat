@@ -26,13 +26,12 @@ function getExtraResources(): string[] {
 }
 
 const config: ForgeConfig = {
-  outDir: './out',
   packagerConfig: {
     asar: true,
     icon: '/images/icon', // no file extension required - Forge will add .ico/.icns/.png automatically
     extraResource: getExtraResources(),
     executableName: 'streamer-alerts-xplat', // Ensure consistent executable name across platforms
-    appCopyright: 'Patrick Magee'
+    appCopyright: 'Patrick Magee'    
   },
   rebuildConfig: {},
   makers: [

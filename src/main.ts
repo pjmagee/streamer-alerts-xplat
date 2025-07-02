@@ -128,9 +128,10 @@ class StreamerAlertsApp {
       this.startStreamingChecks();
     });
 
-    app.on('window-all-closed', (event: Electron.Event) => {
-      event.preventDefault(); // Prevent app from quitting
+    app.on('window-all-closed', () => {
+        // don't quit the app when all windows are closed      
     });
+    
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

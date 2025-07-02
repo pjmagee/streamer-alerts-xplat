@@ -36,6 +36,7 @@ export class ApiService {
           const updatedCredentials = this.configService.getApiCredentials();
           credentials.twitch = updatedCredentials.twitch;
         } catch (error) {
+          logger.error('Error refreshing Twitch token:', error);
           throw new Error('Twitch access token has expired and refresh failed. Please re-authenticate with Twitch.');
         }
       } else {
@@ -102,6 +103,7 @@ export class ApiService {
           const updatedCredentials = this.configService.getApiCredentials();
           credentials.youtube = updatedCredentials.youtube;
         } catch (error) {
+          logger.error('Error refreshing YouTube token:', error);
           throw new Error('YouTube access token has expired and refresh failed. Please re-authenticate with YouTube.');
         }
       } else {
@@ -192,6 +194,7 @@ export class ApiService {
           const updatedCredentials = this.configService.getApiCredentials();
           credentials.kick = updatedCredentials.kick;
         } catch (error) {
+          logger.error('Error refreshing Kick token:', error);
           throw new Error('Kick access token has expired and refresh failed. Please re-authenticate with Kick.');
         }
       } else {
