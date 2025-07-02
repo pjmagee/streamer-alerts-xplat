@@ -1,36 +1,67 @@
-import { defineConfig } from "eslint/config";
-import { fixupConfigRules } from "@eslint/compat";
-import globals from "globals";
-import tsParser from '@typescript-eslint/parser';
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
+import globals from "globals";
+import tseslint from '@typescript-eslint/eslint-plugin';
+import tsparser from '@typescript-eslint/parser';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-});
-
-export default defineConfig([{
-    extends: fixupConfigRules(compat.extends(
-        "eslint:recommended",
-        "plugin:@typescript-eslint/eslint-recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:import/recommended",
-        "plugin:import/electron",
-        "plugin:import/typescript",
-    )),
-
-    languageOptions: {
-        globals: {
-            ...globals.browser,
-            ...globals.node,
-        },
-
-        parser: tsParser,
+export default [
+    // Global ignores
+    {
+        ignores: [
+            ".vite/**",
+            "out/**", 
+            "dist/**",
+            "node_modules/**",
+            "coverage/**"
+        ]
     },
-}]);
+    
+    // JavaScript files
+    {
+        files: ["**/*.{js,mjs}"],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+            },
+            ecmaVersion: "latest",
+            sourceType: "module"
+        },
+        ...js.configs.recommended,
+    },
+    
+    // TypeScript files
+    {
+        files: ["**/*.{ts,tsx}"],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                // Add Electron and Node.js globals
+                NodeJS: 'readonly',
+                Electron: 'readonly',
+                __dirname: 'readonly',
+                __filename: 'readonly',
+                process: 'readonly',
+                global: 'readonly'
+            },
+            parser: tsparser,
+            parserOptions: {
+                ecmaVersion: "latest",
+                sourceType: "module",
+                project: "./tsconfig.json"
+            }
+        },
+        plugins: {
+            '@typescript-eslint': tseslint
+        },
+        rules: {
+            ...js.configs.recommended.rules,
+            ...tseslint.configs.recommended.rules,
+            // Custom rules
+            'no-console': 'warn',
+            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            // Turn off no-undef for TypeScript files since TypeScript handles this
+            'no-undef': 'off'
+        }
+    }
+];
