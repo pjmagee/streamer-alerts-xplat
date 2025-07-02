@@ -3,7 +3,7 @@ import { ConfigService } from './config.service';
 import { OAuthService } from './oauth.service';
 import { ScrapingService } from './scraping.service';
 import { ApiService } from './api.service';
-import { PlaywrightManagerService } from './playwright-manager.service';
+import { PuppeteerManagerService } from './puppeteer-manager.service';
 import logger from '../utils/logger';
 
 export class StreamerService {
@@ -11,14 +11,14 @@ export class StreamerService {
   private oauthService: OAuthService;
   private scrapingService: ScrapingService;
   private apiService: ApiService;
-  private playwrightManager: PlaywrightManagerService;
+  private puppeteerManager: PuppeteerManagerService;
 
   constructor() {
     this.configService = new ConfigService();
     this.oauthService = new OAuthService(this.configService);
     this.scrapingService = new ScrapingService();
     this.apiService = new ApiService(this.configService, this.oauthService);
-    this.playwrightManager = PlaywrightManagerService.getInstance();
+    this.puppeteerManager = PuppeteerManagerService.getInstance();
   }
 
   public async checkMultipleStreamers(accounts: StreamerAccount[]): Promise<StreamerStatus[]> {
@@ -65,8 +65,8 @@ export class StreamerService {
     switch (account.platform) {
       case 'twitch':
         if (strategy === 'scrape') {
-          // Check if Playwright browsers are available
-          const canScrape = await this.playwrightManager.ensurePlaywrightForScraping();
+          // Check if Puppeteer browsers are available
+          const canScrape = await this.puppeteerManager.ensurePuppeteerForScraping();
           if (!canScrape) {
             throw new Error('Scraping is not available. Please install browser binaries or switch to API mode.');
           }
@@ -82,8 +82,8 @@ export class StreamerService {
 
       case 'youtube':
         if (strategy === 'scrape') {
-          // Check if Playwright browsers are available
-          const canScrape = await this.playwrightManager.ensurePlaywrightForScraping();
+          // Check if Puppeteer browsers are available
+          const canScrape = await this.puppeteerManager.ensurePuppeteerForScraping();
           if (!canScrape) {
             throw new Error('Scraping is not available. Please install browser binaries or switch to API mode.');
           }
@@ -99,8 +99,8 @@ export class StreamerService {
 
       case 'kick':
         if (strategy === 'scrape') {
-          // Check if Playwright browsers are available
-          const canScrape = await this.playwrightManager.ensurePlaywrightForScraping();
+          // Check if Puppeteer browsers are available
+          const canScrape = await this.puppeteerManager.ensurePuppeteerForScraping();
           if (!canScrape) {
             throw new Error('Scraping is not available. Please install browser binaries or switch to API mode.');
           }

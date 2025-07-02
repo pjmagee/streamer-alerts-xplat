@@ -12,7 +12,7 @@ import { PublisherGithub } from '@electron-forge/publisher-github';
 // Helper function to get resources that actually exist
 function getExtraResources(): string[] {
   const baseResources = [
-    'images/tray-icon.png',      
+    'images/tray-icon.png',
     'images/tray-icon-16.png',
     'images/tray-icon-32.png',
     'images/tray-icon-64.png',
@@ -32,7 +32,7 @@ const config: ForgeConfig = {
     icon: '/images/icon', // no file extension required - Forge will add .ico/.icns/.png automatically
     extraResource: getExtraResources(),
     executableName: 'streamer-alerts-xplat', // Ensure consistent executable name across platforms
-    appCopyright: 'Patrick Magee'    
+    appCopyright: 'Patrick Magee'
   },
   rebuildConfig: {},
   makers: [
@@ -40,13 +40,13 @@ const config: ForgeConfig = {
       authors: 'Patrick Magee',
       iconUrl: 'https://raw.githubusercontent.com/pjmagee/streamer-alerts-xplat/main/images/icon.ico', // URL to ICO file for Control Panel
       setupIcon: './images/icon.ico' // ICO file for Setup.exe
-    }), 
-    new MakerZIP({}, ['darwin']), 
-    new MakerRpm({      
+    }),
+    new MakerZIP({}, ['darwin']),
+    new MakerRpm({
       options: {
         icon: './images/icon.png' // PNG file for RPM package
-      }      
-    }), 
+      }
+    }),
     new MakerDeb({
       options: {
         icon: './images/icon.png' // PNG file for Debian package
@@ -55,7 +55,11 @@ const config: ForgeConfig = {
   ],
   plugins: [
     new AutoUnpackNativesPlugin({
-      // Specify any additional options here
+      // Ensure Puppeteer browsers are properly unpacked
+      patterns: [
+        'puppeteer/**/*',
+        '.local-chromium/**/*'
+      ]
     }),
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.

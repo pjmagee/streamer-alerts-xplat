@@ -1,16 +1,11 @@
 import logger from '../utils/logger';
-import { PlaywrightManagerService } from './playwright-manager.service';
-
-// Dynamic import types for playwright
-type Browser = import('playwright').Browser;
-type Page = import('playwright').Page;
-type BrowserContext = import('playwright').BrowserContext;
+import { PuppeteerManagerService } from './puppeteer-manager.service';
+import { Browser, Page } from 'puppeteer';
 
 export class ScrapingService {
   private browser: Browser | null = null;
-  private context: BrowserContext | null = null;
-  private playwrightManager = PlaywrightManagerService.getInstance();
-  
+  private puppeteerManager = PuppeteerManagerService.getInstance();
+
   // Persistent pages for each platform
   private twitchPage: Page | null = null;
   private youtubePage: Page | null = null;
@@ -18,46 +13,17 @@ export class ScrapingService {
 
   private async getBrowser(): Promise<Browser> {
     if (!this.browser) {
-      // Get chromium from playwright manager
-      const chromium = await this.playwrightManager.getPlaywrightBrowser();
-      
-      this.browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
-        ]
-      });
-
-      // Create a persistent context for better performance
-      this.context = await this.browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        viewport: { width: 1920, height: 1080 },
-        ignoreHTTPSErrors: true,
-        extraHTTPHeaders: {
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-        }
-      });
+      // Get browser from puppeteer manager
+      this.browser = await this.puppeteerManager.getPuppeteerBrowser();
     }
     return this.browser;
   }
 
   private async createPage(): Promise<Page> {
-    await this.getBrowser();
-    if (!this.context) {
-      throw new Error('Browser context not initialized');
-    }
-
-    const page = await this.context.newPage();
-
+    const browser = await this.getBrowser();
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1920, height: 1080 });
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
     return page;
   }
 
@@ -104,25 +70,63 @@ export class ScrapingService {
   }
 
   public async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string }> {
+
+    const titleSelector = 'p[data-a-target="stream-title"][class*="CoreText"]';
+    const liveIndicatorSelector = 'span[class*="CoreText"]';
+
+
     try {
       const page = await this.getTwitchPage();
-      await page.goto(`https://www.twitch.tv/${username}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      const isLiveLoctator = await page.locator('span[class*="CoreText"]:has-text("LIVE")')
+      await page.goto(`https://www.twitch.tv/${username}`, { waitUntil: 'load', timeout: 30000 });
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      await page.waitForSelector('body', { visible: true });
 
-      const isLive = await isLiveLoctator
-        .waitFor({ state: 'visible', timeout: 20000 })
-        .then(() => true)
-        .catch(() => false);
+      let isLive = false;
+
+      try {
+        await page.waitForSelector(liveIndicatorSelector, {visible: true, timeout: 30000 });
+
+        isLive = await page.evaluate(() => {
+          const elements = document.querySelectorAll(liveIndicatorSelector);
+          for (const element of elements) {
+            const text = element.textContent || '';
+            if (text === 'LIVE') {
+              return true;
+            }
+          }
+          return false;
+        });
+      } catch (timeoutError) {
+        logger.debug(`Timeout waiting for Twitch live indicators for ${username}`);
+        // If we timeout, still try to evaluate without waiting
+        isLive = false;
+      }
 
       let title = '';
       if (isLive) {
-        const titleLocator = page.locator('p[data-a-target="stream-title"][class*="CoreText"]');
-        title = await titleLocator.innerText({ timeout: 5000});
+        try {
+          // Wait for and extract the stream title using ONLY your proven selector
+          await page.waitForSelector(titleSelector, {visible: true });
+
+          const titleElement = await page.$(titleSelector);
+          if (titleElement) {
+            title = await titleElement.evaluate((el: Element) => el.textContent?.trim() || '');
+          }
+
+          if (!title) {
+            logger.debug(`Could not find stream title for ${username} with your proven selector`);
+          }
+
+        } catch (error) {
+          logger.warn(`Could not get stream title for ${username}:`, error);
+        }
       }
 
+      logger.debug(`Twitch check for ${username}: isLive=${isLive}, title="${title}"`);
       return { isLive, title };
+
     } catch (error) {
-      logger.error('Error scraping Twitch stream:', error);
+      logger.error(`Error scraping Twitch stream for ${username}:`, error);
       await this.resetTwitchPage();
       return { isLive: false, title: '' };
     }
@@ -138,73 +142,142 @@ export class ScrapingService {
         : channel.startsWith('@')
           ? `https://www.youtube.com/${channel}`
           : `https://www.youtube.com/@${channel}`;
-      await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
-      // Wait for full client-side load
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
+
+      await page.goto(baseUrl, { waitUntil: 'load', timeout: 30000 });
+      await new Promise(resolve => setTimeout(resolve, 10000));
 
       // Handle consent/cookie popup if present
       try {
         const consentTitle = await page.title();
         if (/before you continue|consent/i.test(consentTitle)) {
-          const btns = page.locator('button');
-          for (let i = 0, len = await btns.count(); i < len; i++) {
-            const btn = btns.nth(i);
-            const text = await btn.textContent();
+          await page.waitForSelector('button', { timeout: 5000 });
+          const buttons = await page.$$('button');
+          for (const button of buttons) {
+            const text = await button.evaluate((el: Element) => el.textContent);
             if (text && /(accept all|i agree|agree|accept)/i.test(text.trim())) {
-              await btn.click();
-              await page.waitForLoadState('networkidle');
+              await button.click();
+              await new Promise(resolve => setTimeout(resolve, 3000));
               break;
             }
           }
-          await page.waitForTimeout(1000);
         }
       } catch {
-        // ignore consent errors
+        // Ignore consent popup errors
       }
 
-      // Check for LIVE badge in header
-      const liveBadge = page.locator('div#page-header div[class*="live-badge"] div:has-text("LIVE")');
-      const isLive = await liveBadge.first().isVisible().catch(() => false);
+      // Check for LIVE indicator
+      let isLive = false;
+
+      try {
+        // Wait for page content to be ready
+        await page.waitForSelector('#page-header, #channel-header, ytd-channel-renderer');
+
+        // Check for LIVE badge
+        isLive = await page.evaluate(() => {
+          const liveSelectors = [
+            'div[class*="live-badge"]',
+            'span[class*="live-badge"]',
+            '[class*="live-indicator"]'
+          ];
+
+          for (const selector of liveSelectors) {
+            const elements = document.querySelectorAll(selector);
+            for (const element of elements) {
+              const text = element.textContent || '';
+              if (text.toUpperCase().includes('LIVE')) {
+                return true;
+              }
+            }
+          }
+
+          // Also check for any text content that indicates live status
+          const allText = document.body.textContent || '';
+          return /\bLIVE\b/i.test(allText) &&
+            !/(offline|ended|scheduled)/i.test(allText);
+        });
+
+      } catch (error) {
+        logger.debug(`Error checking YouTube live status for ${channel}:`, error);
+      }
+
       let title = '';
       if (isLive) {
-        // Extract live stream title
-        // Use any anchor with id=video-title for title
-        const videoLink = page.locator('a#video-title');
-        title = await videoLink.first().getAttribute('title')
-          .then((t: string | null) => t || '')
-          .catch(async () => {
-            return videoLink.first().textContent().then((text: string | null) => text?.trim() || '');
-          });
+        try {
+          // Try to get the live stream title
+          const titleSelectors = [
+            'a#video-title',
+            'h1#video-title',
+            '[id="video-title"]'
+          ];
+
+          for (const selector of titleSelectors) {
+            try {
+              await page.waitForSelector(selector, { visible: true, timeout: 5000 });
+              const titleElement = await page.$(selector);
+              if (titleElement) {
+                title = await titleElement.evaluate((el: Element) => {
+                  return el.getAttribute('title') ||
+                    el.textContent?.trim() ||
+                    el.getAttribute('aria-label') || '';
+                });
+                if (title) {
+                  break;
+                }
+              }
+            } catch {
+              continue;
+            }
+          }
+
+          if (!title) {
+            logger.debug(`Could not find stream title for YouTube channel ${channel}`);
+          }
+
+        } catch (error) {
+          logger.warn(`Could not get YouTube stream title for ${channel}:`, error);
+        }
       }
+
+      logger.debug(`YouTube check for ${channel}: isLive=${isLive}, title="${title}"`);
       return { isLive, title };
+
     } catch (error) {
-      logger.error('Error scraping YouTube stream:', error);
+      logger.error(`Error scraping YouTube stream for ${channel}:`, error);
       await this.resetYouTubePage();
       return { isLive: false, title: '' };
     }
   }
 
   public async checkKickStream(username: string): Promise<{ isLive: boolean; title: string }> {
+
+    const titleSelector = 'span[data-testid="livestream-title"]';
+    const liveIndicatorSelector = 'span';
+
     try {
       const page = await this.getKickPage();
 
-      await page.goto(`https://kick.com/${username}`, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      });
+      await page.goto(`https://kick.com/${username}`, { waitUntil: 'load' });
+      await new Promise(resolve => setTimeout(resolve, 10000));
 
-      // Check for LIVE indicator using more efficient approach
-      const isLive = await page.locator('span:has-text("LIVE")')
-        .first().isVisible().catch(() => false);
+
+      // Check for LIVE indicator
+      const isLive = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll(liveIndicatorSelector)).some(span =>
+          span.textContent?.includes('LIVE')
+        );
+      }).catch(() => false);
 
       let title = '';
       if (isLive) {
-        // Extract title, with fallback to page title
-        title = await page.locator('span[data-testid="livestream-title"]')
-          .first().textContent()
-          .then((t: string | null) => t?.trim() || '')
-          .catch(async () => '');
+        // Extract title
+        try {
+          const titleElement = await page.$(titleSelector);
+          if (titleElement) {
+            title = await titleElement.evaluate((el: Element) => el.textContent?.trim() || '');
+          }
+        } catch (error) {
+          logger.warn('Could not get Kick stream title:', error);
+        }
       }
 
       return { isLive, title };
@@ -230,12 +303,8 @@ export class ScrapingService {
         await this.kickPage.close();
         this.kickPage = null;
       }
-      
-      // Close context and browser
-      if (this.context) {
-        await this.context.close();
-        this.context = null;
-      }
+
+      // Close browser
       if (this.browser) {
         await this.browser.close();
         this.browser = null;

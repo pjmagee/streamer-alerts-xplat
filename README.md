@@ -16,7 +16,7 @@ A desktop application for notifications when channels go live on YouTube, Twitch
 - [Electron](https://www.electronjs.org/)
 - [Electron Forge](https://www.electronforge.io/)
 - [Vite](https://vitejs.dev/)
-- [Playwright](https://playwright.dev/)
+- [Puppeteer](https://pptr.dev/)
 - [TypeScript](https://www.typescriptlang.org/)
 
 ## Auto-Updates

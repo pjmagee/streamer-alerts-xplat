@@ -10,6 +10,31 @@ export default defineConfig({
     // Define a constant that can be used to determine asset paths
     __STATIC__: '""'
   },
+  build: {
+    rollupOptions: {
+      // Externalize optional dependencies that cause bundling issues
+      external: [
+        'bufferutil',
+        'utf-8-validate'
+      ],
+      output: {
+        // Handle dynamic imports properly
+        manualChunks: undefined
+      },
+      // Suppress specific warnings for puppeteer
+      onwarn(warning, warn) {
+        // Ignore puppeteer and WebSocket optional dependency warnings
+        if (warning.code === 'UNRESOLVED_IMPORT' && 
+            (warning.message.includes('puppeteer') || 
+             warning.message.includes('chromium') ||
+             warning.message.includes('bufferutil') ||
+             warning.message.includes('utf-8-validate'))) {
+          return;
+        }
+        warn(warning);
+      }
+    }
+  },
   plugins: [
     {
       name: 'copy-assets',
