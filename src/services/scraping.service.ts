@@ -106,7 +106,7 @@ export class ScrapingService {
       try {
         await page.waitForSelector(liveIndicatorSelector, {visible: true, timeout: 30000 });
       } catch (timeoutError) {
-        logger.debug(`Timeout waiting for Twitch live indicators for ${username}`);
+        logger.error(`Timeout waiting for Twitch live indicators for ${username}:`, timeoutError);        
         // Continue to evaluate even if we timeout - elements might still be there
       }
 

@@ -9,7 +9,7 @@ const getLogPath = () => {
     const userDataPath = app.getPath('userData');
     return path.join(userDataPath, 'logs');
   } catch (error) {
-    // Fallback for cases where app might not be available
+    console.error('Error getting user data path:', error);
     return path.join(process.cwd(), 'logs');
   }
 };

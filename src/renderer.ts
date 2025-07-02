@@ -1281,9 +1281,7 @@ class StreamerAlertsRenderer {
 
   // Animate timing card when updated
   private animateTimingCard(card: HTMLElement): void {
-    card.classList.remove('updated');
-    // Force reflow
-    card.offsetHeight;
+    card.classList.remove('updated');        
     card.classList.add('updated');
     
     // Remove animation class after animation completes

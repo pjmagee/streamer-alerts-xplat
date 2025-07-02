@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Temporary type declarations for electron-store
  * This provides proper typing for electron-store methods

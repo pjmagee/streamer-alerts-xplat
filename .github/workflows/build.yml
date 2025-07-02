@@ -24,12 +24,6 @@ jobs:
           - os: windows-latest
             platform: win32
 
-    env:
-      ELECTRON_CACHE: ~/.cache/electron
-      ELECTRON_BUILDER_CACHE: ~/.cache/electron-builder
-      # Electron Forge debug information
-      DEBUG: electron-forge:*
-
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -37,46 +31,10 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
-
-      - name: Cache Electron
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/electron
-            ~/.cache/electron-builder
-            ~/Library/Caches/electron
-            ~/Library/Caches/electron-builder
-            %USERPROFILE%\AppData\Local\electron\Cache
-            %USERPROFILE%\AppData\Local\electron-builder\cache
-          key: ${{ runner.os }}-electron-cache-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-electron-cache-
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Verify Electron Forge configuration
-        run: |
-          echo "Verifying package.json..."
-          node -e "
-            const pkg = require('./package.json');
-            console.log('Package name:', pkg.name);
-            console.log('Version:', pkg.version);
-            console.log('Main entry:', pkg.main);
-            console.log('Scripts available:', Object.keys(pkg.scripts).join(', '));
-          "
-          echo "Verifying forge config..."
-          node -e "
-            const fs = require('fs');
-            if (fs.existsSync('./forge.config.ts')) {
-              console.log('✓ Forge config found: forge.config.ts');
-            } else {
-              console.error('✗ Forge config not found');
-              process.exit(1);
-            }
-          "
 
       - name: Install system dependencies (Linux)
         if: matrix.platform == 'linux'
@@ -96,24 +54,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run publish
         timeout-minutes: 30
-
-      - name: Verify build output
-        run: |
-          echo "Build output directory structure:"
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            if [ -d "out/make" ]; then
-              find out/make -type f -name "*.exe" -o -name "*.msi" -o -name "*.zip" | head -10
-            else
-              echo "No build output found in out/make/"
-            fi
-          else
-            if [ -d "out/make" ]; then
-              find out/make -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" \) | head -10
-            else
-              echo "No build output found in out/make/"
-            fi
-          fi
-        shell: bash
 
       - name: Upload build artifacts
         if: always()
