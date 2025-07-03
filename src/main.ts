@@ -490,6 +490,9 @@ class StreamerAlertsApp {
       },
       {
         type: 'separator'
+      },     
+      {
+        type: 'separator'
       },
       {
         label: 'Exit',
@@ -508,6 +511,7 @@ class StreamerAlertsApp {
 
     this.tray?.popUpContextMenu(contextMenu);
   }
+
   private createMainWindow(): void {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.show();
@@ -794,22 +798,47 @@ class StreamerAlertsApp {
   private showLiveNotification(streamer: StreamerStatus): void {
     if (!this.notificationsEnabled || !Notification.isSupported()) return;
 
+    logger.info(`Creating notification for ${streamer.displayName} (${streamer.platform}) with URL: ${streamer.url}`);
+
+    this.showNotification(streamer);
+  }
+
+  private showNotification(streamer: StreamerStatus): void {
+
     const iconPath = getIconPath('tray-icon-32.png');
 
     const notification = new Notification({
-      title: '🔴 Streamer is Live!',
-      body: `${streamer.displayName} is now live on ${streamer.platform}!\n${streamer.title || 'No title'}`,
+      title: `🔴 ${streamer.displayName} is Live!`,
+      subtitle: `${streamer.platform}`,
+      body: `${streamer.title || 'No title'}`,
       icon: iconPath,
       silent: false,
       urgency: 'normal'
     });
 
-    notification.on('click', () => {
-      // Open stream URL in default browser
-      shell.openExternal(streamer.url);
+    notification.on('click', async () => {
+      logger.info(`Notification clicked for ${streamer.displayName}`);
+      await shell.openExternal(streamer.url);
     });
 
-    notification.show();
+    notification.on('show', () => {
+      logger.info(`Notification shown for ${streamer.displayName}`);
+    });
+
+    notification.on('close', () => {      
+      logger.info(`Notification closed for ${streamer.displayName}`);
+    });
+
+    notification.on('failed', (error) => {
+      logger.error(`Notification failed for ${streamer.displayName}:`, error);
+    });
+
+    try {
+      notification.show();
+      logger.info('Notification displayed');
+    } catch (error) {
+      logger.error('Failed to show notification:', error);
+    }
   }
 
   private async validateStoredTokens(): Promise<void> {
@@ -856,7 +885,6 @@ class StreamerAlertsApp {
       logger.error('Error validating stored tokens:', error);
     }
   }
-
 }
 
 // Prevent multiple instances

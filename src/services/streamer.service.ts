@@ -148,8 +148,16 @@ export class StreamerService {
     switch (account.platform) {
       case 'twitch':
         return `https://twitch.tv/${account.username}`;
-      case 'youtube':       
-        return `https://youtube.com/channel/${account.username}`;
+      case 'youtube':
+        // Check if it's a channel ID (starts with UC) or a handle (@username)
+        if (account.username.startsWith('UC')) {
+          return `https://youtube.com/channel/${account.username}`;
+        } else if (account.username.startsWith('@')) {
+          return `https://youtube.com/${account.username}`;
+        } else {
+          // If it's just a username, treat it as a handle
+          return `https://youtube.com/@${account.username}`;
+        }
       case 'kick':
         return `https://kick.com/${account.username}`;
       default:
