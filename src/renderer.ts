@@ -21,6 +21,10 @@ class StreamerAlertsRenderer {
     await this.loadApiCredentials();
     await this.loadUserApiCredentials();
     
+    // Load browsers before checking status
+    await this.loadDownloadedBrowsersList();
+    await this.refreshChromeStatus();
+    
     // Start timing updates for account information
     this.startTimingUpdates();
     
@@ -91,6 +95,24 @@ class StreamerAlertsRenderer {
     saveCredentialsBtn?.addEventListener('click', () => this.saveUserApiCredentials());
     clearCredentialsBtn?.addEventListener('click', () => this.clearUserApiCredentials());
     openConfigBtn?.addEventListener('click', () => this.openConfigDirectory());
+
+    // Browser configuration event listeners
+    const refreshChromeStatusBtn = document.getElementById('refreshChromeStatus');
+
+    refreshChromeStatusBtn?.addEventListener('click', () => this.refreshChromeStatus());
+    
+    // Browser download event listeners
+    const downloadBrowserBtn = document.getElementById('downloadBrowserBtn');
+    const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
+    
+    downloadBrowserBtn?.addEventListener('click', () => this.downloadBrowser());
+    cancelDownloadBtn?.addEventListener('click', () => this.cancelBrowserDownload());
+    
+    // Load supported browsers for download dropdown
+    this.loadSupportedBrowsers();
+    
+    // Listen for browser download events
+    this.setupBrowserDownloadListeners();
     
     // Make testCredential function available globally for onclick handlers
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -361,7 +383,7 @@ class StreamerAlertsRenderer {
       if (kickClientSecretInput) kickClientSecretInput.value = kickSecret || '';
       
     } catch (error) {
-      console.error('Failed to load user API credentials:', error);
+      logger.error('Failed to load user API credentials:', error);
     }
   }
 
@@ -1313,7 +1335,7 @@ class StreamerAlertsRenderer {
       this.showNotification('API credentials saved successfully!', 'success');
       
     } catch (error) {
-      console.error('Failed to save user API credentials:', error);
+      logger.error('Failed to save user API credentials:', error);
       this.showNotification('Failed to save API credentials', 'error');
     }
   }
@@ -1332,7 +1354,7 @@ class StreamerAlertsRenderer {
       this.showNotification('API credentials cleared', 'info');
       
     } catch (error) {
-      console.error('Failed to clear user API credentials:', error);
+      logger.error('Failed to clear user API credentials:', error);
       this.showNotification('Failed to clear API credentials', 'error');
     }
   }
@@ -1370,8 +1392,471 @@ class StreamerAlertsRenderer {
       await window.electronAPI.openConfigDirectory();
       this.showNotification('Config folder opened in file explorer', 'success');
     } catch (error) {
-      console.error('Failed to open config directory:', error);
+      logger.error('Failed to open config directory:', error);
       this.showNotification('Failed to open config folder', 'error');
+    }
+  }
+
+  async refreshChromeStatus(): Promise<void> {
+    try {
+      const statusElement = document.getElementById('chromeStatus');
+      if (!statusElement) {
+        logger.error('Browser status element not found');
+        return;
+      }
+
+      logger.debug('Starting browser status refresh...');
+
+      // Show loading state
+      const statusTextElement = statusElement.querySelector('.status-text');
+      if (statusTextElement) {
+        statusTextElement.textContent = 'Checking browser readiness...';
+        statusTextElement.className = 'status-text';
+      }
+      
+      // Reset status cache to ensure fresh check
+      await window.electronAPI.resetPuppeteerStatus();
+      
+      // Get the current browser status
+      const status = await window.electronAPI.getPuppeteerStatus();
+      logger.debug('Browser status received:', status);
+      
+      if (!status) {
+        logger.error('No status received from getPuppeteerStatus');
+      const errorStatusText = statusElement.querySelector('.status-text');
+      if (errorStatusText) {
+        errorStatusText.textContent = '❌ Failed to check browser status';
+        errorStatusText.className = 'status-text status-error';
+      }
+        return;
+      }
+      
+      const statusClass = status.isAvailable ? 'status-available' : 'status-unavailable';
+      const statusIcon = status.isAvailable ? '✅' : '⚠️';
+      
+      // Create detailed status messages with actionable information
+      let displayMessage = '';
+      let helpText = '';
+      
+      if (status.isAvailable) {
+        if (status.message.includes('downloaded browser')) {
+          displayMessage = 'Ready';
+          helpText = 'Puppeteer browser is configured and ready for web scraping.';
+        } else if (status.message.includes('detected browser')) {
+          displayMessage = 'Ready';
+          helpText = 'Using detected system browser for web scraping.';
+        } else {
+          displayMessage = 'Ready';
+          helpText = 'Web scraping functionality is operational.';
+        }
+      } else {
+        displayMessage = 'Not Available';
+        helpText = 'Download a browser below to enable web scraping features.';
+      }
+      
+      // Update the status display with enhanced information
+      // Update the status display
+      statusElement.innerHTML = `
+        <span class="status-text ${statusClass}">${statusIcon} ${displayMessage}</span>
+        <button type="button" class="btn btn-link" id="refreshChromeStatus" title="Refresh browser status">🔄</button>
+      `;
+      
+      // Update help text
+      const helpElement = statusElement.parentElement?.querySelector('.setting-help');
+      if (helpElement) {
+        helpElement.textContent = helpText;
+      }
+      
+      // Re-attach event listener
+      const newRefreshBtn = document.getElementById('refreshChromeStatus');
+      if (newRefreshBtn) {
+        newRefreshBtn.addEventListener('click', () => this.refreshChromeStatus());
+      }
+      
+      logger.debug(`Browser status updated: ${displayMessage}`);
+      
+    } catch (error) {
+      logger.error('Failed to refresh browser status:', error);
+      const statusElement = document.getElementById('chromeStatus');
+      if (statusElement) {
+        statusElement.innerHTML = `
+          <span class="status-text status-error">❌ Error</span>
+          <button type="button" class="btn btn-link" id="refreshChromeStatus" title="Refresh browser status">🔄</button>
+        `;
+        
+        // Update help text
+        const errorHelpElement = statusElement.parentElement?.querySelector('.setting-help');
+        if (errorHelpElement) {
+          errorHelpElement.textContent = 'Unable to determine browser availability. Try refreshing or downloading a browser.';
+        }
+        
+        // Re-attach event listener
+        const errorRefreshBtn = document.getElementById('refreshChromeStatus');
+        if (errorRefreshBtn) {
+          errorRefreshBtn.addEventListener('click', () => this.refreshChromeStatus());
+        }
+      }
+    }
+  }
+
+  // Browser Download Methods
+  async loadSupportedBrowsers(): Promise<void> {
+    try {
+      const browsers = await window.electronAPI.getSupportedBrowsers();
+      const browserSelect = document.getElementById('browserTypeSelect') as HTMLSelectElement;
+      
+      if (browserSelect) {
+        // Clear existing options
+        browserSelect.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a browser to download';
+        browserSelect.appendChild(defaultOption);
+        
+        // Add browser options
+        browsers.forEach(browser => {
+          const option = document.createElement('option');
+          option.value = browser.id;
+          option.textContent = `${browser.name} - ${browser.description}`;
+          browserSelect.appendChild(option);
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to load supported browsers:', error);
+      const browserSelect = document.getElementById('browserTypeSelect') as HTMLSelectElement;
+      if (browserSelect) {
+        browserSelect.innerHTML = '<option value="">Failed to load browsers</option>';
+      }
+    }
+  }
+
+  // Browser Selection Methods
+  setupBrowserDownloadListeners(): void {
+    // Listen for download events from main process
+    window.electronAPI.onBrowserDownloadStarted((data) => {
+      this.onBrowserDownloadStarted(data);
+    });
+
+    window.electronAPI.onBrowserDownloadCompleted((data) => {
+      this.onBrowserDownloadCompleted(data);
+    });
+
+    window.electronAPI.onBrowserDownloadError((data) => {
+      this.onBrowserDownloadError(data);
+    });
+
+    window.electronAPI.onBrowserDownloadCancelled(() => {
+      this.onBrowserDownloadCancelled();
+    });
+  }
+
+  async downloadBrowser(): Promise<void> {
+    const browserSelect = document.getElementById('browserTypeSelect') as HTMLSelectElement;
+    const downloadBtn = document.getElementById('downloadBrowserBtn') as HTMLButtonElement;
+    
+    if (!browserSelect || !browserSelect.value) {
+      this.showDownloadResult('Please select a browser to download.', 'error');
+      return;
+    }
+
+    try {
+      downloadBtn.disabled = true;
+      
+      const options = {
+        browser: browserSelect.value,
+        buildId: 'latest'
+      };
+
+      await window.electronAPI.downloadBrowser(options);
+      
+    } catch (error) {
+      logger.error('Failed to start browser download:', error);
+      this.showDownloadResult('Failed to start download. Please try again.', 'error');
+      downloadBtn.disabled = false;
+    }
+  }
+
+  async cancelBrowserDownload(): Promise<void> {
+    try {
+      await window.electronAPI.cancelBrowserDownload();
+    } catch (error) {
+      logger.error('Failed to cancel browser download:', error);
+    }
+  }
+
+  onBrowserDownloadStarted(data: { browser: string; buildId: string }): void {
+    logger.info('Browser download started:', data);
+    
+    const downloadBtn = document.getElementById('downloadBrowserBtn') as HTMLButtonElement;
+    const cancelBtn = document.getElementById('cancelDownloadBtn') as HTMLButtonElement;
+    const progressDiv = document.getElementById('downloadProgress') as HTMLDivElement;
+    
+    if (downloadBtn) downloadBtn.classList.add('hidden');
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+    if (progressDiv) progressDiv.classList.remove('hidden');
+    
+    this.showDownloadResult(`Downloading ${data.browser}...`, 'info');
+  }
+
+  onBrowserDownloadCompleted(data: { browser: string; buildId: string; executablePath: string }): void {
+    logger.info('Browser download completed:', data);
+    
+    const downloadBtn = document.getElementById('downloadBrowserBtn') as HTMLButtonElement;
+    const cancelBtn = document.getElementById('cancelDownloadBtn') as HTMLButtonElement;
+    const progressDiv = document.getElementById('downloadProgress') as HTMLDivElement;
+    
+    if (downloadBtn) {
+      downloadBtn.classList.remove('hidden');
+      downloadBtn.disabled = false;
+    }
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    if (progressDiv) progressDiv.classList.add('hidden');
+    
+    this.showDownloadResult(`✅ Successfully downloaded ${data.browser}!`, 'success');
+    
+    // Refresh the available browsers list, downloaded browsers list, and Puppeteer status
+    this.loadDownloadedBrowsersList();
+    this.loadDownloadedBrowsersList();
+    this.refreshChromeStatus();
+  }
+
+  onBrowserDownloadError(data: { browser: string; buildId: string; error: string }): void {
+    logger.error('Browser download error:', data);
+    
+    const downloadBtn = document.getElementById('downloadBrowserBtn') as HTMLButtonElement;
+    const cancelBtn = document.getElementById('cancelDownloadBtn') as HTMLButtonElement;
+    const progressDiv = document.getElementById('downloadProgress') as HTMLDivElement;
+    
+    if (downloadBtn) {
+      downloadBtn.classList.remove('hidden');
+      downloadBtn.disabled = false;
+    }
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    if (progressDiv) progressDiv.classList.add('hidden');
+    
+    this.showDownloadResult(`❌ Download failed: ${data.error}`, 'error');
+  }
+
+  onBrowserDownloadCancelled(): void {
+    logger.info('Browser download cancelled');
+    
+    const downloadBtn = document.getElementById('downloadBrowserBtn') as HTMLButtonElement;
+    const cancelBtn = document.getElementById('cancelDownloadBtn') as HTMLButtonElement;
+    const progressDiv = document.getElementById('downloadProgress') as HTMLDivElement;
+    
+    if (downloadBtn) {
+      downloadBtn.classList.remove('hidden');
+      downloadBtn.disabled = false;
+    }
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    if (progressDiv) progressDiv.classList.add('hidden');
+    
+    this.showDownloadResult('Download cancelled.', 'info');
+  }
+
+  showDownloadResult(message: string, type: 'success' | 'error' | 'info'): void {
+    const resultDiv = document.getElementById('downloadResult');
+    if (resultDiv) {
+      resultDiv.className = `download-result ${type}`;
+      resultDiv.textContent = message;
+      resultDiv.classList.remove('hidden');
+      
+      // Auto-hide success/info messages after 5 seconds
+      if (type !== 'error') {
+        setTimeout(() => {
+          resultDiv.classList.add('hidden');
+        }, 5000);
+      }
+    }
+  }
+
+  // Browser Management Methods
+  async loadDownloadedBrowsersList(): Promise<void> {
+    try {
+      const browsers = await window.electronAPI.getAvailableBrowsers();
+      const selectedBrowserPath = await window.electronAPI.getSelectedBrowserPath();
+      const listContainer = document.getElementById('downloadedBrowsersList');
+      
+      if (!listContainer) {
+        logger.error('Downloaded browsers list container not found');
+        return;
+      }
+      
+      // Clear existing content
+      listContainer.innerHTML = '';
+      
+      if (browsers.length === 0) {
+        listContainer.innerHTML = `
+          <div class="no-browsers-message">
+            <div class="no-browsers-icon">📦</div>
+            <div class="no-browsers-text">
+              <h4>No browsers downloaded yet</h4>
+              <p>Download a browser below to enable web scraping features for platforms that require it.</p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      
+      // Create header
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'browsers-list-header';
+      headerDiv.innerHTML = `
+        <div class="browsers-count">📱 ${browsers.length} browser${browsers.length > 1 ? 's' : ''} available</div>
+      `;
+      listContainer.appendChild(headerDiv);
+      
+      // Create browser items
+      browsers.forEach(browser => {
+        const browserItem = document.createElement('div');
+        browserItem.className = 'browser-item';
+        
+        // Check if this browser is currently selected
+        const isSelected = selectedBrowserPath === browser.path;
+        
+        // Get browser display name and icon
+        const browserIcons: Record<string, string> = {
+          'chrome': '🟢',
+          'chromium': '🔵', 
+          'firefox': '🟠',
+          'edge': '🔷'
+        };
+        
+        const browserIcon = browserIcons[browser.browser.toLowerCase()] || '🌐';
+        
+        browserItem.innerHTML = `
+          <div class="browser-info">
+            <div class="browser-header">
+              <span class="browser-icon">${browserIcon}</span>
+              <div class="browser-details">
+                <div class="browser-name">${browser.name}${isSelected ? ' (Active)' : ''}</div>
+                <div class="browser-type">${browser.browser.charAt(0).toUpperCase() + browser.browser.slice(1)}</div>
+              </div>
+            </div>
+            <div class="browser-path" title="${browser.path}">
+              📁 ${browser.path.length > 60 ? '...' + browser.path.slice(-60) : browser.path}
+            </div>
+          </div>
+          <div class="browser-actions">
+            ${isSelected ? 
+              '<button type="button" class="btn btn-success btn-sm" disabled>✅ Selected</button>' :
+              `<button type="button" class="btn btn-primary btn-sm btn-select" data-path="${browser.path}" title="Select this browser">🎯 Select</button>`
+            }
+            <button type="button" class="btn btn-danger btn-sm btn-uninstall" data-browser="${browser.browser}" data-path="${browser.path}" title="Remove this browser">
+              🗑️ Remove
+            </button>
+          </div>
+        `;
+        
+        // Add event listener for select button
+        const selectBtn = browserItem.querySelector('.btn-select') as HTMLButtonElement;
+        if (selectBtn) {
+          selectBtn.addEventListener('click', () => this.selectBrowser(browser.path));
+        }
+        
+        // Add event listener for uninstall button
+        const uninstallBtn = browserItem.querySelector('.btn-uninstall') as HTMLButtonElement;
+        if (uninstallBtn) {
+          uninstallBtn.addEventListener('click', () => this.uninstallBrowser(browser.browser, browser.name));
+        }
+        
+        listContainer.appendChild(browserItem);
+      });
+      
+    } catch (error) {
+      logger.error('Failed to load downloaded browsers list:', error);
+      const listContainer = document.getElementById('downloadedBrowsersList');
+      if (listContainer) {
+        listContainer.innerHTML = `
+          <div class="no-browsers-message error">
+            <div class="no-browsers-icon">❌</div>
+            <div class="no-browsers-text">
+              <h4>Error loading browsers</h4>
+              <p>Unable to load the list of downloaded browsers. Try refreshing the page.</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+  }
+
+  async uninstallBrowser(browserId: string, browserName: string): Promise<void> {
+    // Enhanced confirmation dialog
+    const confirmed = confirm(
+      `🗑️ Remove Browser\n\n` +
+      `Are you sure you want to remove ${browserName}?\n\n` +
+      `This will:\n` +
+      `• Delete all browser files\n` +
+      `• Remove it from the selection list\n` +
+      `• Cannot be undone\n\n` +
+      `You can always re-download it later if needed.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      // Find and disable the uninstall button
+      const uninstallBtn = document.querySelector(`[data-browser="${browserId}"]`) as HTMLButtonElement;
+      if (uninstallBtn) {
+        uninstallBtn.disabled = true;
+        uninstallBtn.innerHTML = '⏳ Removing...';
+      }
+
+      // Show immediate feedback
+      this.showDownloadResult(`🗑️ Removing ${browserName}...`, 'info');
+
+      // Perform the uninstall
+      const result = await window.electronAPI.uninstallBrowser(browserId, 'latest');
+      
+      if (result && result.success) {
+        // Show success message
+        this.showDownloadResult(`✅ Successfully removed ${browserName}!`, 'success');
+        
+        // Refresh all browser-related UI components
+        await Promise.all([
+          this.loadDownloadedBrowsersList(),
+          this.loadDownloadedBrowsersList(),
+          this.refreshChromeStatus()
+        ]);
+        
+        logger.info(`Browser ${browserName} uninstalled successfully`);
+      } else {
+        throw new Error(result?.error || 'Uninstall failed');
+      }
+      
+    } catch (error) {
+      logger.error('Failed to uninstall browser:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.showDownloadResult(`❌ Failed to remove ${browserName}: ${errorMessage}`, 'error');
+      
+      // Re-enable the uninstall button on error
+      const uninstallBtn = document.querySelector(`[data-browser="${browserId}"]`) as HTMLButtonElement;
+      if (uninstallBtn) {
+        uninstallBtn.disabled = false;
+        uninstallBtn.innerHTML = '🗑️ Remove';
+      }
+    }
+  }
+
+  async selectBrowser(browserPath: string): Promise<void> {
+    try {
+      // Save the selection
+      await window.electronAPI.setSelectedBrowserPath(browserPath);
+      
+      // Refresh the browsers list to update the UI
+      await this.loadDownloadedBrowsersList();
+      
+      // Reset Puppeteer status cache so it re-evaluates with the new browser
+      await window.electronAPI.resetPuppeteerStatus();
+      
+      // Refresh Puppeteer status to reflect the new selection
+      await this.refreshChromeStatus();
+      
+      logger.info(`Browser selected: ${browserPath}`);
+    } catch (error) {
+      logger.error('Failed to select browser:', error);
     }
   }
 }

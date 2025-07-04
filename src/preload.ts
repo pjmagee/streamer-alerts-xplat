@@ -38,6 +38,24 @@ const electronAPI: ElectronAPI = {
   setUserApiCredentials: (credentials) => ipcRenderer.invoke('config:setUserApiCredentials', credentials),
   updateUserApiCredential: (platform, value) => ipcRenderer.invoke('config:updateUserApiCredential', platform, value),
   hasUserApiCredentials: () => ipcRenderer.invoke('config:hasUserApiCredentials'),
+  getPuppeteerStatus: () => ipcRenderer.invoke('puppeteer:getStatus'),
+  resetPuppeteerStatus: () => ipcRenderer.invoke('puppeteer:resetStatus'),
+  // Browser download APIs
+  getSupportedBrowsers: () => ipcRenderer.invoke('browser:getSupportedBrowsers'),
+  canDownloadBrowser: (browser, buildId) => ipcRenderer.invoke('browser:canDownload', browser, buildId),
+  downloadBrowser: (options) => ipcRenderer.invoke('browser:download', options),
+  uninstallBrowser: (browser: string, buildId?: string) => ipcRenderer.invoke('browser:uninstall', browser, buildId || 'latest'),
+  cancelBrowserDownload: () => ipcRenderer.invoke('browser:cancelDownload'),
+  isBrowserDownloading: () => ipcRenderer.invoke('browser:isDownloading'),
+  getLatestBuildId: (browser) => ipcRenderer.invoke('browser:getLatestBuildId', browser),
+  onBrowserDownloadStarted: (callback) => ipcRenderer.on('browser:downloadStarted', (_, data) => callback(data)),
+  onBrowserDownloadCompleted: (callback) => ipcRenderer.on('browser:downloadCompleted', (_, data) => callback(data)),
+  onBrowserDownloadError: (callback) => ipcRenderer.on('browser:downloadError', (_, data) => callback(data)),  onBrowserDownloadCancelled: (callback) => ipcRenderer.on('browser:downloadCancelled', () => callback()),
+  
+  // Browser selection APIs
+  getAvailableBrowsers: () => ipcRenderer.invoke('browser:getAvailable'),
+  getSelectedBrowserPath: () => ipcRenderer.invoke('config:getSelectedBrowserPath'),
+  setSelectedBrowserPath: (path: string | null) => ipcRenderer.invoke('config:setSelectedBrowserPath', path),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

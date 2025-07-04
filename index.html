@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streamer Alerts - Configuration</title>
+    <title>Streamer Alerts</title>
     <link rel="stylesheet" href="./src/index.css">
 </head>
 
@@ -12,7 +12,7 @@
     <div class="container">
         <header>
             <h1>🔴 Streamer Alerts</h1>
-            <p>Manage your streamer notifications</p>
+            <p>Configure notifications</p>
         </header>
 
         <main>
@@ -20,6 +20,7 @@
             <nav class="tab-navigation">
                 <button class="tab-button active" data-tab="settings">⚙️ Settings</button>
                 <button class="tab-button" data-tab="strategy">📊 Strategy</button>
+                <button class="tab-button" data-tab="browser">🌐 Browser</button>
                 <button class="tab-button" data-tab="api">🔑 API</button>
                 <button class="tab-button" data-tab="accounts">👥 Accounts</button>
                 <button class="tab-button" data-tab="data">💾 Data</button>
@@ -28,7 +29,7 @@
             <!-- Settings Tab -->
             <div id="settings-tab" class="tab-content active">
                 <section class="general-settings-section">
-                    <h2>⚙️ General Settings</h2>
+                    <h2>⚙️ Settings</h2>
                     <div class="settings-row">
                         <div class="setting-item">
                             <label>
@@ -46,34 +47,34 @@
                 </section>
 
                 <section class="smart-checking-section">
-                    <h2>🧠 Smart Checking Configuration</h2>
-                    <p class="section-help">Configure intelligent polling intervals to reduce unnecessary checks and improve performance.</p>
+                    <h2>🧠 Smart Checking</h2>
+                    <p class="section-help">Configure intelligent polling to reduce checks and improve performance.</p>
                     
                     <div class="smart-checking-grid">
                         <div class="settings-row">
                             <div class="setting-item">
                                 <label for="onlineCheckInterval">
-                                    Online check interval (minutes):
+                                    Online interval (minutes):
                                     <span class="info-icon">ℹ️</span>
                                 </label>
                                 <input type="number" id="onlineCheckInterval" min="5" max="120" value="30" step="1">
-                                <span class="setting-help">How often to check if online streamers are still online</span>
+                                <span class="setting-help">How often to check online streamers</span>
                             </div>
                             
                             <div class="setting-item">
                                 <label for="offlineCheckInterval">
-                                    Offline check interval (minutes):
+                                    Offline interval (minutes):
                                     <span class="info-icon">ℹ️</span>
                                 </label>
                                 <input type="number" id="offlineCheckInterval" min="1" max="30" value="3" step="1">
-                                <span class="setting-help">Base interval that increases for long-term offline streamers</span>
+                                <span class="setting-help">Base interval, increases for long-term offline</span>
                             </div>
                         </div>
 
                         <div class="settings-row">
                             <div class="setting-item">
                                 <label for="exponentialBackoffMultiplier">
-                                    Exponential backoff multiplier:
+                                    Backoff multiplier:
                                     <span class="info-icon">ℹ️</span>
                                 </label>
                                 <input type="number" id="exponentialBackoffMultiplier" min="1" max="5" step="0.1" value="1.8">
@@ -82,11 +83,11 @@
                             
                             <div class="setting-item">
                                 <label for="backoffMaxInterval">
-                                    Maximum backoff interval (minutes):
+                                    Max interval (minutes):
                                     <span class="info-icon">ℹ️</span>
                                 </label>
                                 <input type="number" id="backoffMaxInterval" min="10" max="240" value="45" step="5">
-                                <span class="setting-help">Cap for exponential backoff (recommended: 30-120 min)</span>
+                                <span class="setting-help">Cap for exponential backoff (recommended: 30-120)</span>
                             </div>
                         </div>
 
@@ -100,7 +101,7 @@
                                     <input type="range" id="jitterPercentage" min="0" max="50" value="15" step="5">
                                     <span class="jitter-value">15%</span>
                                 </div>
-                                <span class="setting-help">Prevents simultaneous API requests (±15% timing variation)</span>
+                                <span class="setting-help">Prevents simultaneous requests (±15% timing variation)</span>
                             </div>
                         </div>
                         
@@ -117,10 +118,10 @@
                             <div class="setting-item">
                                 <label>
                                     <input type="checkbox" id="resetStatusOnClose">
-                                    Reset stream status on app close
+                                    Reset status on close
                                     <span class="info-icon">ℹ️</span>
                                 </label>
-                                <span class="setting-help">Clear all stream statuses when the app is closed</span>
+                                <span class="setting-help">Clear stream statuses when app closes</span>
                             </div>
                         </div>
                     </div>
@@ -130,8 +131,8 @@
             <!-- Strategy Tab -->
             <div id="strategy-tab" class="tab-content">
                 <section class="strategy-section">
-                    <h2>📊 Check Strategy</h2>
-                    <p class="strategy-help">Choose how to check stream status for each platform. Scraping requires no login but may be less reliable.</p>
+                    <h2>📊 Strategy</h2>
+                    <p class="strategy-help">Choose API or scraping for each platform. Scraping requires no login but may be less reliable.</p>
                         
                     <div class="strategy-group">
                         <div class="strategy-item">
@@ -179,70 +180,136 @@
                 </section>
             </div>
 
+            <!-- Browser Tab -->
+            <div id="browser-tab" class="tab-content">
+                <section class="browser-config-section">
+                    <h2>🌐 Browser</h2>
+                    <p class="section-help">Download and configure browsers for web scraping.</p>
+                    
+                    <div class="browser-config-group">
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label for="chromeStatus">🔧 Status:</label>
+                                <div id="chromeStatus" class="status-display">
+                                    <span class="status-text">Checking...</span>
+                                    <button type="button" class="btn btn-link" id="refreshChromeStatus" title="Refresh">🔄</button>
+                                </div>
+                                <span class="setting-help">Shows if scraping is available. Download below if needed.</span>
+                            </div>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <div class="browser-management-section">
+                            <h3>📱 Downloaded</h3>
+                            <div id="downloadedBrowsersList" class="downloaded-browsers-list">
+                                <!-- Downloaded browsers will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <div class="browser-download-section">
+                            <h3>📥 Download</h3>
+                            
+                            <div class="download-controls">
+                                <div class="browser-type-selection">
+                                    <label for="browserTypeSelect">Type:</label>
+                                    <select id="browserTypeSelect" class="browser-select">
+                                        <option value="">Loading...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="download-actions">
+                                    <button type="button" class="btn btn-primary" id="downloadBrowserBtn">📥 Download</button>
+                                    <button type="button" class="btn btn-secondary hidden" id="cancelDownloadBtn">❌ Cancel</button>
+                                </div>
+                            </div>
+                            
+                            <div id="downloadProgress" class="download-progress hidden">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                                <div class="progress-text">
+                                    <span id="progressStatus">Preparing...</span>
+                                    <span id="progressPercent">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div id="downloadResult" class="download-result hidden">
+                                <div class="result-message"></div>
+                            </div>
+                            
+                            <div class="download-help">
+                                <p><small>Chrome, Chromium, Firefox supported. ~100-150MB each.</small></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
             <!-- API Tab -->
             <div id="api-tab" class="tab-content">
                 <section class="api-section">                
-                    <h2>🔑 API Configuration</h2>
+                    <h2>🔑 API</h2>
                     
                     <!-- API Credentials Setup Section -->
                     <div class="api-credentials-section">
-                        <h3>🛠️ API Credentials Setup</h3>
-                        <p class="section-help">To use API features, you need to create your own app credentials for each platform. This gives you better rate limits and full control over your API usage.</p>
+                        <h3>🛠️ Credentials</h3>
+                        <p class="section-help">Create app credentials for each platform to use API features with better rate limits.</p>
                         
                         <div class="credentials-grid">
                             <div class="credential-group">
                                 <div class="credential-header">
                                     <h4>🟣 Twitch</h4>
                                     <button type="button" class="btn btn-link" onclick="openDeveloperPortal('https://dev.twitch.tv/')">
-                                        🔗 Create Twitch App
+                                        🔗 Create App
                                     </button>
                                 </div>
                                 <div class="credential-form">
                                     <label for="twitchClientId">Client ID:</label>
-                                    <input type="text" id="twitchClientId" placeholder="Enter your Twitch Client ID" class="credential-input">
+                                    <input type="text" id="twitchClientId" placeholder="Enter Twitch Client ID" class="credential-input">
                                     <button type="button" class="btn btn-secondary btn-sm" onclick="testCredential('twitch')">Test</button>
                                 </div>
-                                <p class="credential-help">Create an app at <strong>dev.twitch.tv</strong> → OAuth Redirect URLs: <code>http://localhost:8080</code></p>
+                                <p class="credential-help">OAuth Redirect: <code>http://localhost:8080</code></p>
                             </div>
 
                             <div class="credential-group">
                                 <div class="credential-header">
                                     <h4>🔴 YouTube</h4>
                                     <button type="button" class="btn btn-link" onclick="openDeveloperPortal('https://console.cloud.google.com/')">
-                                        🔗 Create Google Cloud Project
+                                        🔗 Create Project
                                     </button>
                                 </div>
                                 <div class="credential-form">
                                     <label for="youtubeClientId">Client ID:</label>
-                                    <input type="text" id="youtubeClientId" placeholder="Enter your YouTube Client ID" class="credential-input">
+                                    <input type="text" id="youtubeClientId" placeholder="Enter YouTube Client ID" class="credential-input">
                                     <button type="button" class="btn btn-secondary btn-sm" onclick="testCredential('youtube')">Test</button>
                                 </div>
-                                <p class="credential-help">Enable <strong>YouTube Data API v3</strong> → Create OAuth 2.0 credentials → Redirect URI: <code>http://localhost:8080</code></p>
+                                <p class="credential-help">Enable YouTube Data API v3. Redirect: <code>http://localhost:8080</code></p>
                             </div>
 
                             <div class="credential-group">
                                 <div class="credential-header">
                                     <h4>🟢 Kick</h4>
                                     <button type="button" class="btn btn-link" onclick="openDeveloperPortal('https://dev.kick.com/')">
-                                        🔗 Create Kick App
+                                        🔗 Create App
                                     </button>
                                 </div>
                                 <div class="credential-form">
                                     <label for="kickClientId">Client ID:</label>
-                                    <input type="text" id="kickClientId" placeholder="Enter your Kick Client ID" class="credential-input">
+                                    <input type="text" id="kickClientId" placeholder="Enter Kick Client ID" class="credential-input">
                                     <div></div> <!-- Empty cell for grid alignment -->
                                 </div>
                                 <div class="credential-form">
                                     <label for="kickClientSecret">Client Secret:</label>
-                                    <input type="password" id="kickClientSecret" placeholder="Enter your Kick Client Secret" class="credential-input">
+                                    <input type="password" id="kickClientSecret" placeholder="Enter Kick Client Secret" class="credential-input">
                                     <button type="button" class="btn btn-secondary btn-sm" onclick="testCredential('kick')">Test</button>
                                 </div>
-                                <p class="credential-help">Create an app at <strong>dev.kick.com</strong> → Redirect URI: <code>http://localhost:8080</code></p>
+                                <p class="credential-help">Redirect: <code>http://localhost:8080</code></p>
                             </div>
                         </div>
 
                         <div class="credentials-actions">
-                            <button type="button" class="btn btn-primary" id="saveCredentialsBtn">💾 Save All Credentials</button>
+                            <button type="button" class="btn btn-primary" id="saveCredentialsBtn">💾 Save All</button>
                             <button type="button" class="btn btn-secondary" id="clearCredentialsBtn">🗑️ Clear All</button>
                         </div>
                     </div>
@@ -251,8 +318,8 @@
 
                     <!-- OAuth Login Section -->
                     <div class="oauth-login-section">
-                        <h3>🔐 Platform Authentication</h3>
-                        <p class="api-help">After setting up your credentials above, log in to each platform you want to monitor when using API strategy.</p>
+                        <h3>🔐 Authentication</h3>
+                        <p class="api-help">Log in to platforms you want to monitor when using API strategy.</p>
                     
                     <div class="api-group">
                         <h3>🟣 Twitch</h3>
@@ -260,13 +327,12 @@
                             <div id="twitchStatus" class="status logged-out">Not logged in</div>
                             <div class="oauth-buttons">
                                 <button type="button" class="btn btn-primary" id="twitchLoginBtn">
-                                    <span class="btn-icon">🔑</span> Login with Twitch
+                                    <span class="btn-icon">🔑</span> Login
                                 </button>
                                 <button type="button" class="btn btn-secondary hidden" id="twitchLogoutBtn">
                                     <span class="btn-icon">🚪</span> Logout
                                 </button>
                             </div>
-                            <p class="api-help" id="twitchHelp">Login required for stream status monitoring</p>
                         </div>
                     </div>
 
@@ -276,13 +342,12 @@
                             <div id="youtubeStatus" class="status logged-out">Not logged in</div>
                             <div class="oauth-buttons">
                                 <button type="button" class="btn btn-primary" id="youtubeLoginBtn">
-                                    <span class="btn-icon">🔑</span> Login with YouTube
+                                    <span class="btn-icon">🔑</span> Login
                                 </button>
                                 <button type="button" class="btn btn-secondary hidden" id="youtubeLogoutBtn">
                                     <span class="btn-icon">🚪</span> Logout
                                 </button>
                             </div>
-                            <p class="api-help" id="youtubeHelp">Login required for stream status monitoring</p>
                         </div>
                     </div>                
                     <div class="api-group">
@@ -291,13 +356,12 @@
                             <div id="kickStatus" class="status logged-out">Not logged in</div>
                             <div class="oauth-buttons">
                                 <button type="button" class="btn btn-primary" id="kickLoginBtn">
-                                    <span class="btn-icon">🔑</span> Login with Kick
+                                    <span class="btn-icon">🔑</span> Login
                                 </button>
                                 <button type="button" class="btn btn-secondary hidden" id="kickLogoutBtn">
                                     <span class="btn-icon">🚪</span> Logout
                                 </button>
                             </div>
-                            <p class="api-help" id="kickHelp">Login required for stream status monitoring</p>
                         </div>
                     </div>
                 </section>
@@ -307,8 +371,8 @@
             <div id="accounts-tab" class="tab-content">
                 <section class="accounts-section">
                     <div class="section-header">
-                        <h2>👥 Streamer Accounts</h2>
-                        <button id="addAccountBtn" class="btn btn-primary">+ Add Account</button>
+                        <h2>👥 Accounts</h2>
+                        <button id="addAccountBtn" class="btn btn-primary">+ Add</button>
                     </div>
 
                     <div id="accountsList" class="accounts-list">
@@ -320,20 +384,20 @@
             <!-- Data Tab -->
             <div id="data-tab" class="tab-content">
                 <section class="data-management-section">
-                    <h2>💾 Data Management</h2>
-                    <p class="section-help">Manage your app data and settings.</p>
+                    <h2>💾 Data</h2>
+                    <p class="section-help">Manage app data and settings.</p>
 
                     <div class="data-management-grid">
                         <div class="settings-row">
                             <div class="setting-item">
                                 <label>
-                                    App configuration files:
+                                    Config files:
                                     <span class="info-icon">ℹ️</span>
                                 </label>
                                 <button type="button" class="btn btn-secondary" id="openConfigBtn">
-                                    📁 Open Config Folder
+                                    📁 Open Folder
                                 </button>
-                                <span class="setting-help">Access your app settings, credentials, and data files</span>
+                                <span class="setting-help">Access settings, credentials, and data files</span>
                             </div>
                         </div>
                     </div>
@@ -345,7 +409,7 @@
         <div id="addAccountModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Add Streamer Account</h3>
+                    <h3>Add Account</h3>
                     <span class="close">&times;</span>
                 </div>
                 <form id="addAccountForm">
@@ -368,7 +432,7 @@
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Account</button>
+                        <button type="submit" class="btn btn-primary">Add</button>
                     </div>
                 </form>
             </div>
@@ -378,7 +442,7 @@
         <div id="editAccountModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Edit Streamer Account</h3>
+                    <h3>Edit Account</h3>
                     <span class="close">&times;</span>
                 </div>
                 <form id="editAccountForm">
@@ -401,7 +465,7 @@
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" id="editCancelBtn">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Update Account</button>
+                        <button type="submit" class="btn btn-primary">Update</button>
                     </div>
                 </form>
             </div>

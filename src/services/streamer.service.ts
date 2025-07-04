@@ -16,7 +16,7 @@ export class StreamerService {
   constructor() {
     this.configService = new ConfigService();
     this.oauthService = new OAuthService(this.configService);
-    this.scrapingService = new ScrapingService();
+    this.scrapingService = new ScrapingService(this.configService);
     this.apiService = new ApiService(this.configService, this.oauthService);
     this.puppeteerManager = PuppeteerManagerService.getInstance();
   }

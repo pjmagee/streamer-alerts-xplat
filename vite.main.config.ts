@@ -4,34 +4,16 @@ import * as path from 'path';
 
 // https://vitejs.dev/config
 export default defineConfig({
-  // Copy assets during development and build
   publicDir: false, // We'll handle copying manually
   define: {
     // Define a constant that can be used to determine asset paths
     __STATIC__: '""'
   },
   build: {
-    rollupOptions: {
-      // Externalize optional dependencies that cause bundling issues
-      external: [
-        'bufferutil',
-        'utf-8-validate'
-      ],
+    rollupOptions: {            
       output: {
         // Handle dynamic imports properly
         manualChunks: undefined
-      },
-      // Suppress specific warnings for puppeteer
-      onwarn(warning, warn) {
-        // Ignore puppeteer and WebSocket optional dependency warnings
-        if (warning.code === 'UNRESOLVED_IMPORT' && 
-            (warning.message.includes('puppeteer') || 
-             warning.message.includes('chromium') ||
-             warning.message.includes('bufferutil') ||
-             warning.message.includes('utf-8-validate'))) {
-          return;
-        }
-        warn(warning);
       }
     }
   },
@@ -39,7 +21,7 @@ export default defineConfig({
     {
       name: 'copy-assets',
       buildStart() {
-        // This will run during development as well
+        
       },
       generateBundle() {
         // Copy images directory to build output

@@ -367,6 +367,25 @@ export class ConfigService {
     return path.dirname(this.store.path);
   }
 
+
+  /**
+   * Get selected browser preference
+   */
+  public getSelectedBrowserPath(): string | null {
+    return this.store.get('selectedBrowserPath', null) as string | null;
+  }
+
+  /**
+   * Set selected browser preference
+   */
+  public setSelectedBrowserPath(path: string | null): void {
+    if (path) {
+      this.store.set('selectedBrowserPath', path);
+    } else {
+      this.store.delete('selectedBrowserPath');
+    }
+  }
+
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }

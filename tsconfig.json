@@ -12,15 +12,15 @@
     "strictBindCallApply": true,
     "strictPropertyInitialization": true,
     "forceConsistentCasingInFileNames": true,
-    "target": "ESNext",
-    "module": "commonjs",
-    "allowJs": true,
+    "target": "esnext",
+    "module": "NodeNext",
+    "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "sourceMap": true,
     "baseUrl": ".",
     "outDir": "dist",
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true
   }
 }

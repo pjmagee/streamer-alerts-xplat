@@ -9,46 +9,30 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { PublisherGithub } from '@electron-forge/publisher-github';
 
-// Helper function to get resources that actually exist
-function getExtraResources(): string[] {
-  const baseResources = [
-    'images/tray-icon.png',
-    'images/tray-icon-16.png',
-    'images/tray-icon-32.png',
-    'images/tray-icon-64.png',
-    'images/tray-icon-alert.png',
-    'images/tray-icon-alert-16.png',
-    'images/tray-icon-alert-32.png',
-    'images/tray-icon-alert-64.png'
-  ];
-
-  return baseResources;
-}
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    icon: '/images/icon', // no file extension required - Forge will add .ico/.icns/.png automatically
-    extraResource: getExtraResources(),
-    executableName: 'streamer-alerts-xplat', // Ensure consistent executable name across platforms
-    appCopyright: 'Patrick Magee'    
+    icon: './images/icon',
+    executableName: 'streamer-alerts-xplat',
+    appCopyright: 'Patrick Magee'
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
       authors: 'Patrick Magee',
-      iconUrl: 'https://raw.githubusercontent.com/pjmagee/streamer-alerts-xplat/main/images/icon.ico', // URL to ICO file for Control Panel
-      setupIcon: './images/icon.ico' // ICO file for Setup.exe
+      iconUrl: 'https://raw.githubusercontent.com/pjmagee/streamer-alerts-xplat/main/images/icon.ico',
+      setupIcon: './images/icon.ico'
     }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({
       options: {
-        icon: './images/icon.png' // PNG file for RPM package
+        icon: './images/icon.png'
       }
     }),
     new MakerDeb({
       options: {
-        icon: './images/icon.png' // PNG file for Debian package
+        icon: './images/icon.png'
       }
     })
   ],
@@ -57,7 +41,6 @@ const config: ForgeConfig = {
       // Ensure Puppeteer browsers are properly unpacked
       patterns: [
         'puppeteer/**/*',
-        '.local-chromium/**/*'
       ]
     }),
     new VitePlugin({

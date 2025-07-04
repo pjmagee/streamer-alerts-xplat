@@ -1,6 +1,7 @@
-import { dialog, shell } from 'electron';
-import puppeteer, { Browser } from 'puppeteer';
+import { dialog } from 'electron';
+import puppeteer, { Browser, LaunchOptions } from 'puppeteer-core';
 import logger from '../utils/logger';
+import { validateBrowserPath, findFirstAvailableBrowser } from '../utils/browser-manager';
 
 export interface PuppeteerStatus {
   isAvailable: boolean;
@@ -19,29 +20,91 @@ export class PuppeteerManagerService {
     return PuppeteerManagerService._instance;
   }
 
-  async checkPuppeteerStatus(): Promise<PuppeteerStatus> {
-    if (this._status) {
+  /**
+   * Reset the status cache to force a recheck
+   */
+  resetStatus(): void {
+    this._status = null;
+  }
+
+  /**
+   * Resolve the browser executable path using the browser selection system
+   */
+  private async resolveBrowserPath(selectedBrowserPath: string | null = null): Promise<{ path: string | null; name: string }> {
+    // Priority order: 
+    // 1. Provided selected browser path
+    // 2. Auto-detected browser using findFirstAvailableBrowser
+    
+    let browserPath: string | null = null;
+    let browserName = 'Unknown Browser';
+    
+    // Try selected browser path first
+    if (selectedBrowserPath && await validateBrowserPath(selectedBrowserPath)) {
+      browserPath = selectedBrowserPath;
+      browserName = 'Selected Browser';
+      logger.info(`Using selected browser: ${browserPath}`);
+    }
+    // Auto-detect browser from downloaded browsers
+    else {
+      const detected = await findFirstAvailableBrowser();
+      if (detected) {
+        browserPath = detected.path;
+        browserName = detected.browser;
+        logger.info(`Using auto-detected browser: ${browserName} at ${browserPath}`);
+      } else {
+        logger.warn('No compatible browser found');
+      }
+    }
+    
+    return { path: browserPath, name: browserName };
+  }
+
+  async checkPuppeteerStatus(selectedBrowserPath: string | null = null): Promise<PuppeteerStatus> {
+    // Don't cache status when specific browser path is provided, as it might change
+    if (this._status && !selectedBrowserPath) {
       return this._status;
     }
 
     try {
-      // Get Puppeteer version
+      // Get Puppeteer version  
       let version: string;
       try {
-        const packageJson = await import('puppeteer/package.json');
-        version = packageJson.version;
-      } catch {
+        // Try to get version from a safer method
+        version = 'installed'; // We'll use a simpler approach since version detection is tricky
+      } catch(error) {
+        logger.warn('Failed to get Puppeteer version:', error);
         version = 'unknown';
       }
 
-      const browser = await puppeteer.launch({ headless: true  });
-      await browser.close();
-
-      this._status = {
-        isAvailable: true,
-        version,
-        message: 'Puppeteer is ready for web scraping'
-      };
+      // Resolve browser path using new system
+      const { path: browserPath, name: browserName } = await this.resolveBrowserPath(selectedBrowserPath);
+      
+      // If we found a browser executable, validate it exists without launching
+      if (browserPath) {
+        const isValid = await validateBrowserPath(browserPath);
+        if (isValid) {
+          logger.info(`Browser validated: ${browserName} at ${browserPath}`);
+          this._status = {
+            isAvailable: true,
+            version,
+            message: selectedBrowserPath ? 'Ready using selected browser' : 'Ready using detected browser'
+          };
+        } else {
+          logger.warn(`Browser path invalid: ${browserPath}`);
+          this._status = {
+            isAvailable: false,
+            message: 'Selected browser path is invalid'
+          };
+        }
+      } else {
+        // No browser found - cannot use puppeteer-core without a browser
+        logger.warn('No browser executable found and puppeteer-core requires an executable path');
+        this._status = {
+          isAvailable: false,
+          message: 'No compatible browser found - please download a browser using the Browser tab'
+        };
+        return this._status;
+      }
 
       logger.info(`Puppeteer ${version} is available and working`);
 
@@ -49,7 +112,7 @@ export class PuppeteerManagerService {
       logger.warn('Puppeteer not available:', error);
       this._status = {
         isAvailable: false,
-        message: 'Puppeteer browser launch failed - scraping features unavailable'
+        message: 'Puppeteer browser validation failed - scraping features unavailable'
       };
     }
 
@@ -60,31 +123,18 @@ export class PuppeteerManagerService {
     const status = await this.checkPuppeteerStatus();
     
     if (!status.isAvailable) {
-      const result = await dialog.showMessageBox({
+      await dialog.showMessageBox({
         type: 'error',
-        title: 'Browser Components Missing',
-        message: 'Puppeteer cannot launch a browser for scraping.',
-        detail: `This could be due to:\n` +
-               `• Missing browser binaries in the packaged app\n` +
-               `• System compatibility issues\n\n` +
-               `Options:\n` +
-               `• Try installing Google Chrome on your system\n` +
-               `• Use API mode instead (requires OAuth setup)\n` +
-               `• Report this issue on GitHub`,
-        buttons: ['Switch to Settings', 'Install Chrome', 'Report Issue', 'OK'],
+        title: 'Browser Required for Scraping',
+        message: 'No browser available for web scraping.',
+        detail: `Web scraping requires a downloaded browser.\n\n` +
+               `Solutions:\n` +
+               `• Go to Browser tab → Download section to get a browser\n` +
+               `• Use API mode instead (no browser required, but needs OAuth setup)\n\n` +
+               `Chrome and Chromium are recommended for best compatibility.`,
+        buttons: ['OK'],
         defaultId: 0
       });
-
-      const response = typeof result === 'number' ? result : result.response;
-
-      switch (response) {
-        case 1: // Install Chrome
-          await shell.openExternal('https://www.google.com/chrome/');
-          break;
-        case 2: // Report Issue
-          await shell.openExternal('https://github.com/pjmagee/streamer-alerts-xplat/issues');
-          break;
-      }
 
       return false;
     }
@@ -92,15 +142,17 @@ export class PuppeteerManagerService {
     return true;
   }
 
-  async getPuppeteerBrowser(): Promise<Browser> {
-    const status = await this.checkPuppeteerStatus();
+  async getPuppeteerBrowser(selectedBrowserPath: string | null = null): Promise<Browser> {
+    const status = await this.checkPuppeteerStatus(selectedBrowserPath);
     
     if (!status.isAvailable) {
       throw new Error('Puppeteer not available - ' + status.message);
     }
 
-    // Launch with more stealthy options to avoid bot detection
-    return await puppeteer.launch({ 
+    // Resolve browser path using new system
+    const { path: browserPath, name: browserName } = await this.resolveBrowserPath(selectedBrowserPath);
+    
+    const launchOptions: LaunchOptions = {
       headless: true,
       args: [
         '--no-sandbox',
@@ -115,11 +167,50 @@ export class PuppeteerManagerService {
         '--disable-blink-features=AutomationControlled'
       ],
       ignoreDefaultArgs: ['--disable-extensions']
-    });
+    };
+
+    // If we found a browser executable, use it
+    if (browserPath) {
+      launchOptions.executablePath = browserPath;
+      logger.info(`Launching Puppeteer with ${browserName}: ${browserPath}`);
+    } else {
+      throw new Error('No compatible browser found - please download a browser using the Browser tab');
+    }
+
+    // Launch with more stealthy options to avoid bot detection
+    return await puppeteer.launch(launchOptions);
   }
 
-  // Reset cached status (useful after user installs Chrome)
-  resetStatus(): void {
-    this._status = null;
+  /**
+   * Test launch a browser to verify it actually works (more thorough than just path validation)
+   */
+  async testBrowserLaunch(selectedBrowserPath: string | null = null): Promise<{ success: boolean; message: string }> {
+    try {
+      // Resolve browser path using new system
+      const { path: browserPath, name: browserName } = await this.resolveBrowserPath(selectedBrowserPath);
+      
+      if (!browserPath) {
+        return { success: false, message: 'No browser path available for testing' };
+      }
+
+      const launchOptions: LaunchOptions = { 
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage'
+        ],
+        executablePath: browserPath
+      };
+
+      logger.info(`Testing browser launch: ${browserName} at ${browserPath}`);
+      const browser = await puppeteer.launch(launchOptions);
+      await browser.close();
+      
+      return { success: true, message: `${browserName} launched successfully` };
+    } catch (error) {
+      logger.error('Browser test launch failed:', error);
+      return { success: false, message: `Browser launch failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
   }
 }

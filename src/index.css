@@ -170,9 +170,13 @@ main {
 
 .section-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.section-header h3 {
+    margin: 0;
 }
 
 .setting-item {
@@ -430,6 +434,22 @@ main {
 .btn-sm {
     padding: 6px 12px;
     font-size: 13px;
+}
+
+/* Select Button Styles */
+.btn-select {
+    background: #4CAF50;
+    color: white;
+    border: 1px solid #45a049;
+}
+
+.btn-select:hover {
+    background: #45a049;
+    border-color: #3d8b40;
+}
+
+.btn-select:focus {
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
 }
 
 /* Account item styling with improved layout */
@@ -1427,6 +1447,456 @@ input:checked + .toggle-slider:before {
     border: 1px solid #dee2e6;
     font-size: 13px;
     color: #495057;
+}
+
+/* Browser Configuration Section */
+.browser-config-section {
+    margin-top: 20px;
+}
+
+.browser-config-group {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    overflow: hidden;
+    position: relative;
+}
+
+.browser-config-group::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.browser-help {
+    font-size: 13px;
+    color: #666;
+    margin-top: 12px;
+    line-height: 1.4;
+    clear: both;
+    display: block;
+}
+
+/* Browser Status - uses standard setting-item styling */
+.status-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+.status-text {
+    font-size: 14px;
+    color: #1f2937;
+    margin: 0;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: #3b82f6;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.btn-link:hover {
+    background-color: #eff6ff;
+}
+
+.browser-download-section {
+    margin-top: 25px;
+    clear: both;
+}
+
+.browser-download-section h3 {
+    color: #495057;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.download-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.browser-type-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.browser-type-selection label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.download-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.download-progress,
+.download-result {
+    display: none;
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+}
+
+.download-progress.show,
+.download-result.show {
+    display: block;
+}
+
+/* Status color classes */
+.status-available {
+    color: #059669 !important;
+    font-weight: 600;
+}
+
+.status-unavailable {
+    color: #dc2626 !important;
+    font-weight: 600;
+}
+
+.status-error {
+    color: #d97706 !important;
+    font-weight: 600;
+}
+
+.browser-download-section h3 {
+    color: #495057;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.download-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.browser-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.browser-selection label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.browser-select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    min-width: 200px;
+}
+
+.browser-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.download-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.download-progress {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.download-progress.hidden {
+    display: none;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #495057;
+}
+
+.download-result {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    border: 1px solid;
+}
+
+.download-result.hidden {
+    display: none;
+}
+
+.download-result.success {
+    background: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.download-result.error {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.download-result.info {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+/* Button improvements */
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    border: 1px solid #dc3545;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+    border-color: #bd2130;
+}
+
+.btn-danger:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Enhanced Browser Management Styles */
+.browser-management-section {
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    margin: 30px 0 25px 0;
+    clear: both;
+    overflow: hidden;
+}
+
+.browser-management-section h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.downloaded-browsers-list {
+    min-height: 120px;
+}
+
+.browsers-list-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.browsers-count {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.browser-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.browser-item:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.browser-item:last-child {
+    margin-bottom: 0;
+}
+
+.browser-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.browser-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.browser-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.browser-details {
+    min-width: 0;
+}
+
+.browser-name {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.browser-type {
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.browser-path {
+    font-size: 11px;
+    color: #6c757d;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background: rgba(0,0,0,0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-top: 5px;
+}
+
+.browser-actions {
+    flex-shrink: 0;
+    margin-left: 15px;
+}
+
+.btn-uninstall {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+}
+
+.btn-uninstall:hover {
+    background: #c82333;
+}
+
+.btn-uninstall:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.no-browsers-message {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 25px;
+    text-align: center;
+    color: #6c757d;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+}
+
+.no-browsers-message.error {
+    color: #dc3545;
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+
+.no-browsers-icon {
+    font-size: 32px;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.no-browsers-text {
+    flex: 1;
+}
+
+.no-browsers-text h4 {
+    margin-bottom: 5px;
+    color: inherit;
+    font-size: 16px;
+}
+
+.no-browsers-text p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* Specific fixes for browser section spacing */
+.browser-status + .section-divider {
+    margin: 20px 0;
+    clear: both;
+}
+
+.browser-status + .section-divider + .browser-management-section {
+    margin-top: 0;
+}
+
+/* Ensure no text or elements overlap in browser sections */
+.browser-config-section .setting-help,
+.browser-config-section .status-help,
+.browser-config-section .browser-help {
+    width: 100%;
+    box-sizing: border-box;
+    clear: both;
+    float: none;
+    position: static;
 }
 
 

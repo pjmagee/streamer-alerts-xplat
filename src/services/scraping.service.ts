@@ -1,10 +1,16 @@
 import logger from '../utils/logger';
 import { PuppeteerManagerService } from './puppeteer-manager.service';
-import { Browser, Page } from 'puppeteer';
+import { ConfigService } from './config.service';
+import { Browser, Page } from 'puppeteer-core';
 
 export class ScrapingService {
   private browser: Browser | null = null;
   private puppeteerManager = PuppeteerManagerService.getInstance();
+  private configService: ConfigService;
+
+  constructor(configService?: ConfigService) {
+    this.configService = configService || new ConfigService();
+  }
 
   // Persistent pages for each platform
   private twitchPage: Page | null = null;
@@ -13,8 +19,9 @@ export class ScrapingService {
 
   private async getBrowser(): Promise<Browser> {
     if (!this.browser) {
-      // Get browser from puppeteer manager
-      this.browser = await this.puppeteerManager.getPuppeteerBrowser();
+      // Get browser from puppeteer manager with selected browser path
+      const selectedBrowserPath = this.configService.getSelectedBrowserPath();
+      this.browser = await this.puppeteerManager.getPuppeteerBrowser(selectedBrowserPath);
     }
     return this.browser;
   }

@@ -60,13 +60,12 @@
     "vite": "^7.0.0"
   },
   "dependencies": {
+    "@puppeteer/browsers": "^2.4.1",
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^10.1.0",
-    "puppeteer": "^24.11.2",
+    "puppeteer-core": "^24.11.2",
     "update-electron-app": "^3.1.1",
-    "winston": "^3.17.0"
-  },
-  "optionalDependencies": {
+    "winston": "^3.17.0",
     "bufferutil": "^4.0.9",
     "utf-8-validate": "^5.0.10"
   }

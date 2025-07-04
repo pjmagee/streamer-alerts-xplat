@@ -19,6 +19,49 @@ export interface NotificationStrategies {
   tray: boolean;
 }
 
+export interface PuppeteerStatus {
+  isAvailable: boolean;
+  version?: string;
+  message: string;
+}
+
+export interface SupportedBrowser {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface BrowserDownloadOptions {
+  browser: string;
+  buildId?: string;
+  platform?: string;
+  cacheDir?: string;
+}
+
+export interface BrowserDownloadEvent {
+  browser: string;
+  buildId: string;
+}
+
+export interface BrowserDownloadCompletedEvent extends BrowserDownloadEvent {
+  executablePath: string;
+}
+
+export interface BrowserDownloadErrorEvent extends BrowserDownloadEvent {
+  error: string;
+}
+
+export interface AvailableBrowser {
+  browser: string;
+  path: string;
+  name: string;
+}
+
+export interface BrowserUninstallResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface ElectronAPI {
   getNotificationsEnabled: () => Promise<boolean>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
@@ -58,6 +101,28 @@ export interface ElectronAPI {
   setUserApiCredentials: (credentials: { twitch: string; youtube: string; kick: { clientId: string; clientSecret: string } }) => Promise<void>;
   updateUserApiCredential: (platform: 'twitch' | 'youtube' | 'kick', value: string | { clientId: string; clientSecret: string }) => Promise<void>;
   hasUserApiCredentials: () => Promise<boolean>;
+
+  // Puppeteer status management
+  getPuppeteerStatus: () => Promise<PuppeteerStatus>;
+  resetPuppeteerStatus: () => Promise<void>;
+
+  // Browser download management
+  getSupportedBrowsers: () => Promise<SupportedBrowser[]>;
+  canDownloadBrowser: (browser: string, buildId?: string) => Promise<boolean>;
+  downloadBrowser: (options: BrowserDownloadOptions) => Promise<string>;
+  uninstallBrowser: (browser: string, buildId?: string) => Promise<BrowserUninstallResult>;
+  cancelBrowserDownload: () => Promise<void>;
+  isBrowserDownloading: () => Promise<boolean>;
+  getLatestBuildId: (browser: string) => Promise<string | null>;
+  onBrowserDownloadStarted: (callback: (data: BrowserDownloadEvent) => void) => void;
+  onBrowserDownloadCompleted: (callback: (data: BrowserDownloadCompletedEvent) => void) => void;
+  onBrowserDownloadError: (callback: (data: BrowserDownloadErrorEvent) => void) => void;
+  onBrowserDownloadCancelled: (callback: () => void) => void;
+  
+  // Browser selection management
+  getAvailableBrowsers: () => Promise<AvailableBrowser[]>;
+  getSelectedBrowserPath: () => Promise<string | null>;
+  setSelectedBrowserPath: (path: string | null) => Promise<void>;
 }
 
 declare global {

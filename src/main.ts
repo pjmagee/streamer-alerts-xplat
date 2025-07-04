@@ -7,6 +7,14 @@ import {
   ConfigService,
   OAuthService
 } from './services';
+import { PuppeteerManagerService } from './services/puppeteer-manager.service';
+import { 
+  getDownloadedBrowsers, 
+  getSupportedBrowsers, 
+  installBrowser, 
+  uninstallBrowser,
+  canDownloadBrowser 
+} from './utils/browser-manager';
 import { StreamerStatus, StreamerAccount } from './types/streamer';
 import logger from './utils/logger';
 
@@ -16,7 +24,7 @@ let isAppQuitting = false;
 // Helper function to get correct icon path for dev vs packaged
 function getIconPath(iconName: string): string {
   return app.isPackaged
-    ? path.join(process.resourcesPath, iconName)
+    ? path.join(process.resourcesPath, 'images', iconName)
     : path.join(__dirname, '../images', iconName);
 }
 
@@ -326,6 +334,85 @@ class StreamerAlertsApp {
     ipcMain.handle('config:setStrategies', (_, strategies) => this.configService.setStrategies(strategies));
     ipcMain.handle('config:setPlatformStrategy', (_, platform, strategy) => this.configService.setPlatformStrategy(platform, strategy));
 
+    // Puppeteer IPC handlers
+    ipcMain.handle('puppeteer:getStatus', async () => {
+      const puppeteerService = PuppeteerManagerService.getInstance();
+      const selectedBrowserPath = this.configService.getSelectedBrowserPath();
+      return await puppeteerService.checkPuppeteerStatus(selectedBrowserPath);
+    });
+    ipcMain.handle('puppeteer:resetStatus', () => {
+      const puppeteerService = PuppeteerManagerService.getInstance();
+      puppeteerService.resetStatus();
+    });
+
+    // Browser download IPC handlers
+    ipcMain.handle('browser:getSupportedBrowsers', async () => {
+      return await getSupportedBrowsers();
+    });
+    ipcMain.handle('browser:canDownload', async (_, browser, buildId) => {
+      // Use Puppeteer API to check if the browser can be downloaded
+      return await canDownloadBrowser(browser, buildId);
+    });
+    ipcMain.handle('browser:download', async (_, options) => {
+      try {
+        const result = await installBrowser(options.browser, options.buildId);
+        if (result.success && this.mainWindow && !this.mainWindow.isDestroyed()) {
+          // Send download completed event to renderer
+          this.mainWindow.webContents.send('browser:downloadCompleted', {
+            browser: options.browser,
+            buildId: options.buildId || 'latest',
+            executablePath: result.browser?.path || ''
+          });
+        }
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Browser download error:', error);
+        throw new Error(errorMessage);
+      }
+    });
+    ipcMain.handle('browser:uninstall', async (_, browser, buildId) => {
+      try {
+        const result = await uninstallBrowser(browser, buildId);
+        if (result.success && this.mainWindow && !this.mainWindow.isDestroyed()) {
+          // Send uninstall completed event to renderer
+          this.mainWindow.webContents.send('browser:uninstallCompleted', { browser, buildId });
+        }
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Browser uninstall error:', error);
+        throw new Error(errorMessage);
+      }
+    });
+    ipcMain.handle('browser:cancelDownload', () => {
+      // Note: Puppeteer Browsers API doesn't support cancellation
+      // We'll need to implement this separately if needed
+      logger.warn('Browser download cancellation not supported with Puppeteer Browsers API');
+    });
+    ipcMain.handle('browser:isDownloading', () => {
+      // For now, return false as we don't track download state
+      return false;
+    });
+    ipcMain.handle('browser:getLatestBuildId', async (_, _browser) => {
+      // Return 'latest' as that's what Puppeteer Browsers API uses
+      return 'latest';
+    });
+
+    // Browser selection IPC handlers
+    ipcMain.handle('browser:getAvailable', () => {
+      return getDownloadedBrowsers();
+    });
+    ipcMain.handle('config:getSelectedBrowserPath', () => {
+      return this.configService.getSelectedBrowserPath();
+    });
+    ipcMain.handle('config:setSelectedBrowserPath', (_, path) => {
+      this.configService.setSelectedBrowserPath(path);
+      // Reset Puppeteer status so it uses the new browser selection
+      const puppeteerService = PuppeteerManagerService.getInstance();
+      puppeteerService.resetStatus();
+    });
+
     // Smart checking IPC handlers
     ipcMain.handle('config:getSmartChecking', () => this.configService.getSmartChecking());
     ipcMain.handle('config:setSmartChecking', (_, config) => this.configService.setSmartChecking(config));
@@ -360,9 +447,9 @@ class StreamerAlertsApp {
     if (process.platform === 'win32') {
       iconName = 'icon.ico'; // Use main ICO for Windows tray
     } else if (process.platform === 'darwin') {
-      iconName = 'tray-icon-32.png'; // Use 32px icon for macOS
+      iconName = 'tray.png'; // Use 32px icon for macOS
     } else {
-      iconName = 'tray-icon-32.png'; // Use 32px icon for Linux
+      iconName = 'tray.png'; // Use 32px icon for Linux
     }
 
     const iconPath = getIconPath(iconName);
