@@ -53,6 +53,7 @@ export interface BrowserDownloadErrorEvent extends BrowserDownloadEvent {
 
 export interface AvailableBrowser {
   browser: string;
+  buildId: string;
   path: string;
   name: string;
 }

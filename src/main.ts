@@ -447,9 +447,9 @@ class StreamerAlertsApp {
     if (process.platform === 'win32') {
       iconName = 'icon.ico'; // Use main ICO for Windows tray
     } else if (process.platform === 'darwin') {
-      iconName = 'tray.png'; // Use 32px icon for macOS
+      iconName = 'icon.png'; // Use main PNG for macOS
     } else {
-      iconName = 'tray.png'; // Use 32px icon for Linux
+      iconName = 'icon.png'; // Use main PNG for Linux
     }
 
     const iconPath = getIconPath(iconName);
@@ -471,7 +471,7 @@ class StreamerAlertsApp {
       logger.warn('Could not load tray icon, trying PNG fallback:', error);
       // Try PNG fallback for Windows
       try {
-        const fallbackPath = getIconPath(process.platform === 'win32' ? 'tray-icon-16.png' : 'tray-icon.png');
+        const fallbackPath = getIconPath('icon.png');
         logger.debug('Trying fallback icon:', fallbackPath);
         trayIcon = nativeImage.createFromPath(fallbackPath);
         logger.debug('Fallback icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
@@ -530,9 +530,11 @@ class StreamerAlertsApp {
       // On Windows, use main ICO for both states (we'll change color programmatically if needed)
       iconName = 'icon.ico';
     } else if (process.platform === 'darwin') {
-      iconName = hasLiveStreamers ? 'tray-icon-alert-32.png' : 'tray-icon-32.png';
+      // For macOS/Linux, fallback to main icons since tray-specific icons are missing
+      iconName = 'icon.png';
     } else {
-      iconName = hasLiveStreamers ? 'tray-icon-alert-32.png' : 'tray-icon-32.png';
+      // For Linux, fallback to main icons since tray-specific icons are missing
+      iconName = 'icon.png';
     }
 
     const iconPath = getIconPath(iconName);
@@ -609,6 +611,7 @@ class StreamerAlertsApp {
     this.mainWindow = new BrowserWindow({
       width: 800,
       height: 600,
+      icon: getIconPath(process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -892,7 +895,7 @@ class StreamerAlertsApp {
 
   private showNotification(streamer: StreamerStatus): void {
 
-    const iconPath = getIconPath('tray-icon-32.png');
+    const iconPath = getIconPath(process.platform === 'win32' ? 'icon.ico' : 'icon.png');
 
     const notification = new Notification({
       title: `🔴 ${streamer.displayName} is Live!`,

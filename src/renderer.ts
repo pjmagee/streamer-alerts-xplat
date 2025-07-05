@@ -800,30 +800,46 @@ class StreamerAlertsRenderer {
   }
 
   showSuccess(message: string): void {
-    this.showNotification(message, 'success');
+    this.showToast('Success', message, 'success');
   }
 
-  showNotification(message: string, type: 'error' | 'success' | 'info' = 'info'): void {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
+  // Toast notification system
+  showToast(message: string, description: string = '', type: 'success' | 'error' | 'info' = 'info', duration: number = 5000): void {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) return;
 
-    // Add to page
-    document.body.appendChild(notification);
+    const toastId = 'toast-' + Date.now();
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.id = toastId;
 
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    }, 5000);
+    const icons = {
+      success: '✅',
+      error: '❌',
+      info: 'ℹ️'
+    };
 
-    // Allow manual close by clicking
-    notification.addEventListener('click', () => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    });
+    toast.innerHTML = `
+      <div class="toast-icon">${icons[type]}</div>
+      <div class="toast-content">
+        <div class="toast-message">${message}</div>
+        ${description ? `<div class="toast-description">${description}</div>` : ''}
+      </div>
+      <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    // Auto-remove after duration
+    if (duration > 0) {
+      setTimeout(() => {
+        const toastElement = document.getElementById(toastId);
+        if (toastElement) {
+          toastElement.style.animation = 'slideOutRight 0.3s ease-out forwards';
+          setTimeout(() => toastElement.remove(), 300);
+        }
+      }, duration);
+    }
   }
 
   handleStreamStatusUpdates(statusUpdates: StreamerStatus[]): void {
@@ -903,7 +919,7 @@ class StreamerAlertsRenderer {
   }
 
   showError(message: string): void {
-    this.showNotification(message, 'error');
+    this.showToast('Error', message, 'error');
   }
 
   loadSmartCheckingSettings(config: SmartCheckingConfig): void {
@@ -1332,11 +1348,11 @@ class StreamerAlertsRenderer {
       await window.electronAPI.setUserApiCredentials(credentials);
       
       // Show success message
-      this.showNotification('API credentials saved successfully!', 'success');
+      this.showToast('API Credentials Saved', 'All API credentials have been saved successfully', 'success');
       
     } catch (error) {
       logger.error('Failed to save user API credentials:', error);
-      this.showNotification('Failed to save API credentials', 'error');
+      this.showToast('Save Failed', 'Could not save API credentials', 'error');
     }
   }
 
@@ -1351,11 +1367,11 @@ class StreamerAlertsRenderer {
       await window.electronAPI.setUserApiCredentials(credentials);
       await this.loadUserApiCredentials(); // Reload to clear UI
       
-      this.showNotification('API credentials cleared', 'info');
+      this.showToast('Credentials Cleared', 'All API credentials have been cleared', 'info');
       
     } catch (error) {
       logger.error('Failed to clear user API credentials:', error);
-      this.showNotification('Failed to clear API credentials', 'error');
+      this.showToast('Clear Failed', 'Could not clear API credentials', 'error');
     }
   }
 
@@ -1376,9 +1392,9 @@ class StreamerAlertsRenderer {
     }
     
     if (input && input.value.trim()) {
-      this.showNotification(`${platform} credentials look valid!`, 'success');
+      this.showToast('Credentials Valid', `${platform} credentials appear to be valid`, 'success');
     } else {
-      this.showNotification(`Please enter ${platform} credentials first`, 'info');
+      this.showToast('Missing Credentials', `Please enter ${platform} credentials first`, 'info');
     }
   }
 
@@ -1390,10 +1406,10 @@ class StreamerAlertsRenderer {
   async openConfigDirectory(): Promise<void> {
     try {
       await window.electronAPI.openConfigDirectory();
-      this.showNotification('Config folder opened in file explorer', 'success');
+      this.showToast('Folder Opened', 'Config folder opened in file explorer', 'success');
     } catch (error) {
       logger.error('Failed to open config directory:', error);
-      this.showNotification('Failed to open config folder', 'error');
+      this.showToast('Open Failed', 'Could not open config folder', 'error');
     }
   }
 
@@ -1758,7 +1774,7 @@ class StreamerAlertsRenderer {
         // Add event listener for uninstall button
         const uninstallBtn = browserItem.querySelector('.btn-uninstall') as HTMLButtonElement;
         if (uninstallBtn) {
-          uninstallBtn.addEventListener('click', () => this.uninstallBrowser(browser.browser, browser.name));
+          uninstallBtn.addEventListener('click', () => this.uninstallBrowser(browser.browser, browser.name, browser.buildId));
         }
         
         listContainer.appendChild(browserItem);
@@ -1781,7 +1797,7 @@ class StreamerAlertsRenderer {
     }
   }
 
-  async uninstallBrowser(browserId: string, browserName: string): Promise<void> {
+  async uninstallBrowser(browserId: string, browserName: string, buildId?: string): Promise<void> {
     // Enhanced confirmation dialog
     const confirmed = confirm(
       `🗑️ Remove Browser\n\n` +
@@ -1796,28 +1812,38 @@ class StreamerAlertsRenderer {
     if (!confirmed) return;
 
     try {
-      // Find and disable the uninstall button
-      const uninstallBtn = document.querySelector(`[data-browser="${browserId}"]`) as HTMLButtonElement;
-      if (uninstallBtn) {
-        uninstallBtn.disabled = true;
-        uninstallBtn.innerHTML = '⏳ Removing...';
+      // Find and disable the uninstall button for this specific browser
+      const uninstallBtns = document.querySelectorAll('.btn-uninstall');
+      let targetButton: HTMLButtonElement | null = null;
+      
+      for (const btn of uninstallBtns) {
+        if (btn.getAttribute('data-browser') === browserId) {
+          targetButton = btn as HTMLButtonElement;
+          break;
+        }
+      }
+
+      if (targetButton) {
+        targetButton.disabled = true;
+        targetButton.innerHTML = '⏳ Removing...';
       }
 
       // Show immediate feedback
       this.showDownloadResult(`🗑️ Removing ${browserName}...`, 'info');
+      this.showToast(`Removing Browser`, `Uninstalling ${browserName}...`, 'info', 2000);
+      logger.info(`Starting uninstall of browser: ${browserId} (${browserName})`);
 
       // Perform the uninstall
-      const result = await window.electronAPI.uninstallBrowser(browserId, 'latest');
+      const result = await window.electronAPI.uninstallBrowser(browserId, buildId || 'latest');
       
       if (result && result.success) {
-        // Show success message
+        // Show success message with both systems for better visibility
         this.showDownloadResult(`✅ Successfully removed ${browserName}!`, 'success');
+        this.showToast(`Browser Removed`, `${browserName} has been successfully uninstalled.`, 'success');
         
-        // Refresh all browser-related UI components
-        await Promise.all([
-          this.loadDownloadedBrowsersList(),
-          this.refreshChromeStatus()
-        ]);
+        // Refresh browser-related UI components
+        await this.loadDownloadedBrowsersList();
+        await this.refreshChromeStatus();
         
         logger.info(`Browser ${browserName} uninstalled successfully`);
       } else {
@@ -1828,12 +1854,17 @@ class StreamerAlertsRenderer {
       logger.error('Failed to uninstall browser:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.showDownloadResult(`❌ Failed to remove ${browserName}: ${errorMessage}`, 'error');
+      this.showToast(`Uninstall Failed`, `Could not remove ${browserName}: ${errorMessage}`, 'error');
       
       // Re-enable the uninstall button on error
-      const uninstallBtn = document.querySelector(`[data-browser="${browserId}"]`) as HTMLButtonElement;
-      if (uninstallBtn) {
-        uninstallBtn.disabled = false;
-        uninstallBtn.innerHTML = '🗑️ Remove';
+      const uninstallBtns = document.querySelectorAll('.btn-uninstall');
+      for (const btn of uninstallBtns) {
+        if (btn.getAttribute('data-browser') === browserId) {
+          const button = btn as HTMLButtonElement;
+          button.disabled = false;
+          button.innerHTML = '🗑️ Remove';
+          break;
+        }
       }
     }
   }
