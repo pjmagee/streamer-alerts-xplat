@@ -1,15 +1,17 @@
 import winston from 'winston';
 import path from 'path';
-import { app } from 'electron';
 
 // Create logs directory path
 const getLogPath = () => {
   try {
+    // Try to import electron app - this will fail in test environment
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { app } = require('electron');
     // Use app.getPath for proper user data directory
     const userDataPath = app.getPath('userData');
     return path.join(userDataPath, 'logs');
-  } catch (error) {
-    console.error('Error getting user data path:', error);
+  } catch {
+    // Fall back to current working directory for tests
     return path.join(process.cwd(), 'logs');
   }
 };

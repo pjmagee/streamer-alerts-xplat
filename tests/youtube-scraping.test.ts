@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { ScrapingService } from '../src/services/scraping.service';
+import { MockConfigService } from './mock-config.service';
 
 test('YouTube scraping returns proper structure', async () => {
-  const scrapingService = new ScrapingService();
+  const mockConfig = new MockConfigService();
+  const scrapingService = new ScrapingService(mockConfig);
   try {
     const result = await scrapingService.checkYouTubeStream('@GBNewsOnline');
-    console.log('YouTube @GBNewsOnline result:', result);
     
     // Verify the structure
     assert.strictEqual(typeof result.isLive, 'boolean');

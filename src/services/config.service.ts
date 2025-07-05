@@ -2,8 +2,9 @@ import Store from 'electron-store';
 import { StreamerAccount, AppConfig, ApiCredentials, PlatformStrategies, StreamCheckStrategy, SmartCheckingConfig } from '../types/streamer';
 import { app } from 'electron';
 import path from 'node:path';
+import { IScrapingConfigService } from './scraping.service';
 
-export class ConfigService {
+export class ConfigService implements IScrapingConfigService {
   private store: Store<AppConfig>;
 
   constructor() {

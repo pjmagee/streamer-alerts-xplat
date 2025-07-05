@@ -1,5 +1,6 @@
 import { dialog } from 'electron';
-import puppeteer, { Browser, LaunchOptions } from 'puppeteer-core';
+import puppeteer, { Browser as PuppeteerBrowser, LaunchOptions } from 'puppeteer-core';
+import { Browser } from '@puppeteer/browsers';
 import logger from '../utils/logger';
 import { validateBrowserPath, findFirstAvailableBrowser } from '../utils/browser-manager';
 
@@ -28,15 +29,43 @@ export class PuppeteerManagerService {
   }
 
   /**
+   * Get browser-specific launch arguments
+   */
+  private getBrowserArgs(browserType?: Browser): string[] {
+    if (browserType === Browser.FIREFOX) {
+      // Firefox-specific arguments
+      return [
+        // No --no-sandbox equivalent for Firefox
+        // Use minimal args for Firefox compatibility
+      ];
+    } else {
+      // Chrome/Chromium arguments
+      return [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas', 
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-blink-features=AutomationControlled'
+      ];
+    }
+  }
+
+  /**
    * Resolve the browser executable path using the browser selection system
    */
-  private async resolveBrowserPath(selectedBrowserPath: string | null = null): Promise<{ path: string | null; name: string }> {
+  private async resolveBrowserPath(selectedBrowserPath: string | null = null): Promise<{ path: string | null; name: string; browserType?: Browser }> {
     // Priority order: 
     // 1. Provided selected browser path
     // 2. Auto-detected browser using findFirstAvailableBrowser
     
     let browserPath: string | null = null;
     let browserName = 'Unknown Browser';
+    let browserType: Browser | undefined = undefined;
     
     // Try selected browser path first
     if (selectedBrowserPath && await validateBrowserPath(selectedBrowserPath)) {
@@ -50,13 +79,14 @@ export class PuppeteerManagerService {
       if (detected) {
         browserPath = detected.path;
         browserName = detected.browser;
+        browserType = detected.browser;
         logger.info(`Using auto-detected browser: ${browserName} at ${browserPath}`);
       } else {
         logger.warn('No compatible browser found');
       }
     }
     
-    return { path: browserPath, name: browserName };
+    return { path: browserPath, name: browserName, browserType };
   }
 
   async checkPuppeteerStatus(selectedBrowserPath: string | null = null): Promise<PuppeteerStatus> {
@@ -142,7 +172,7 @@ export class PuppeteerManagerService {
     return true;
   }
 
-  async getPuppeteerBrowser(selectedBrowserPath: string | null = null): Promise<Browser> {
+  async getPuppeteerBrowser(selectedBrowserPath: string | null = null): Promise<PuppeteerBrowser> {
     const status = await this.checkPuppeteerStatus(selectedBrowserPath);
     
     if (!status.isAvailable) {
@@ -150,22 +180,11 @@ export class PuppeteerManagerService {
     }
 
     // Resolve browser path using new system
-    const { path: browserPath, name: browserName } = await this.resolveBrowserPath(selectedBrowserPath);
+    const { path: browserPath, name: browserName, browserType } = await this.resolveBrowserPath(selectedBrowserPath);
     
     const launchOptions: LaunchOptions = {
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas', 
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--disable-blink-features=AutomationControlled'
-      ],
+      args: this.getBrowserArgs(browserType),
       ignoreDefaultArgs: ['--disable-extensions']
     };
 
@@ -187,7 +206,7 @@ export class PuppeteerManagerService {
   async testBrowserLaunch(selectedBrowserPath: string | null = null): Promise<{ success: boolean; message: string }> {
     try {
       // Resolve browser path using new system
-      const { path: browserPath, name: browserName } = await this.resolveBrowserPath(selectedBrowserPath);
+      const { path: browserPath, name: browserName, browserType } = await this.resolveBrowserPath(selectedBrowserPath);
       
       if (!browserPath) {
         return { success: false, message: 'No browser path available for testing' };
@@ -195,11 +214,7 @@ export class PuppeteerManagerService {
 
       const launchOptions: LaunchOptions = { 
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage'
-        ],
+        args: this.getBrowserArgs(browserType),
         executablePath: browserPath
       };
 

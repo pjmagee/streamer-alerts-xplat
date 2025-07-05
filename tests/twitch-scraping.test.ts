@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { ScrapingService } from '../src/services/scraping.service';
+import { MockConfigService } from './mock-config.service';
 
 test('Twitch scraping returns proper structure', async () => {
-  const scrapingService = new ScrapingService();
+  const mockConfig = new MockConfigService();
+  const scrapingService = new ScrapingService(mockConfig);
   try {
     const result = await scrapingService.checkTwitchStream('asmongold247');
-    console.log('Twitch asmongold247 result:', result);
     
     // Verify the structure
     assert.strictEqual(typeof result.isLive, 'boolean');

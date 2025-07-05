@@ -1618,7 +1618,6 @@ class StreamerAlertsRenderer {
     
     // Refresh the available browsers list, downloaded browsers list, and Puppeteer status
     this.loadDownloadedBrowsersList();
-    this.loadDownloadedBrowsersList();
     this.refreshChromeStatus();
   }
 
@@ -1816,7 +1815,6 @@ class StreamerAlertsRenderer {
         
         // Refresh all browser-related UI components
         await Promise.all([
-          this.loadDownloadedBrowsersList(),
           this.loadDownloadedBrowsersList(),
           this.refreshChromeStatus()
         ]);

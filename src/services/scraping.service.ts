@@ -3,12 +3,19 @@ import { PuppeteerManagerService } from './puppeteer-manager.service';
 import { ConfigService } from './config.service';
 import { Browser, Page } from 'puppeteer-core';
 
+/**
+ * Interface for config services used by ScrapingService
+ */
+export interface IScrapingConfigService {
+  getSelectedBrowserPath(): string | null;
+}
+
 export class ScrapingService {
   private browser: Browser | null = null;
   private puppeteerManager = PuppeteerManagerService.getInstance();
-  private configService: ConfigService;
+  private configService: IScrapingConfigService;
 
-  constructor(configService?: ConfigService) {
+  constructor(configService?: IScrapingConfigService) {
     this.configService = configService || new ConfigService();
   }
 
