@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, Notification, ipcMain, shell } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
 import { updateElectronApp } from 'update-electron-app';
 import { 
@@ -23,9 +24,37 @@ let isAppQuitting = false;
 
 // Helper function to get correct icon path for dev vs packaged
 function getIconPath(iconName: string): string {
-  return app.isPackaged
+  const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'images', iconName)
     : path.join(__dirname, '../images', iconName);
+  
+  logger.debug(`getIconPath: ${iconName} -> ${iconPath} (packaged: ${app.isPackaged})`);
+  return iconPath;
+}
+
+function loadTrayIcon(iconName: string): Electron.NativeImage | null {
+  try {
+    const iconPath = getIconPath(iconName);
+    logger.debug(`Attempting to load tray icon: ${iconPath}`);
+    
+    // Check if file exists
+    if (!fs.existsSync(iconPath)) {
+      logger.warn(`Tray icon file does not exist: ${iconPath}`);
+      return null;
+    }
+    
+    const icon = nativeImage.createFromPath(iconPath);
+    if (icon.isEmpty()) {
+      logger.warn(`Tray icon is empty: ${iconPath}`);
+      return null;
+    }
+    
+    logger.debug(`Successfully loaded tray icon: ${iconPath}, size:`, icon.getSize());
+    return icon;
+  } catch (error) {
+    logger.error(`Error loading tray icon ${iconName}:`, error);
+    return null;
+  }
 }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -452,51 +481,30 @@ class StreamerAlertsApp {
       iconName = 'icon.png'; // Use main PNG for Linux
     }
 
-    const iconPath = getIconPath(iconName);
+    logger.debug(`Creating tray with platform: ${process.platform}, iconName: ${iconName}`);
 
-    let trayIcon: Electron.NativeImage;
-    try {
-      trayIcon = nativeImage.createFromPath(iconPath);
-
-      // Platform-specific adjustments
-      if (process.platform === 'darwin') {
-        // macOS handles sizing automatically, but we can set template
-        trayIcon.setTemplateImage(true);
-      }
-
-      if (trayIcon.isEmpty()) {
-        throw new Error('Icon is empty');
-      }
-    } catch (error) {
-      logger.warn('Could not load tray icon, trying PNG fallback:', error);
-      // Try PNG fallback for Windows
-      try {
-        const fallbackPath = getIconPath('icon.png');
-        logger.debug('Trying fallback icon:', fallbackPath);
-        trayIcon = nativeImage.createFromPath(fallbackPath);
-        logger.debug('Fallback icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
-        
-        if (trayIcon.isEmpty()) {
-          throw new Error('Fallback icon is also empty');
-        }
-      } catch (fallbackError) {
-        logger.error('Could not load fallback tray icon, trying main icon.ico:', fallbackError);
-        // Last resort - try main icon.ico
-        try {
-          const mainIconPath = getIconPath('icon.ico');
-          logger.debug('Trying main icon.ico:', mainIconPath);
-          trayIcon = nativeImage.createFromPath(mainIconPath);
-          logger.debug('Main icon loaded, isEmpty:', trayIcon.isEmpty(), 'size:', trayIcon.getSize());
-          
-          if (trayIcon.isEmpty()) {
-            throw new Error('Main icon is also empty');
-          }
-        } catch (mainIconError) {
-          logger.error('Could not load any tray icon:', mainIconError);
-          // Use an empty image as last resort
-          trayIcon = nativeImage.createEmpty();
-        }
-      }
+    // Try to load the icon with fallbacks
+    let trayIcon: Electron.NativeImage | null = null;
+    
+    // First, try the primary icon
+    trayIcon = loadTrayIcon(iconName);
+    
+    // If primary fails, try PNG fallback on Windows
+    if (!trayIcon && process.platform === 'win32') {
+      logger.warn('Primary ICO icon failed, trying PNG fallback');
+      trayIcon = loadTrayIcon('icon.png');
+    }
+    
+    // If everything fails, create an empty icon (tray will still work)
+    if (!trayIcon) {
+      logger.error('All tray icon loading attempts failed, using empty icon');
+      trayIcon = nativeImage.createEmpty();
+    }
+    
+    // Platform-specific adjustments
+    if (process.platform === 'darwin' && !trayIcon.isEmpty()) {
+      // macOS handles sizing automatically, but we can set template
+      trayIcon.setTemplateImage(true);
     }
 
     // Create the new tray
@@ -540,30 +548,24 @@ class StreamerAlertsApp {
     const iconPath = getIconPath(iconName);
     logger.debug('Updating tray icon to:', iconPath, 'hasLiveStreamers:', hasLiveStreamers);
 
-    let trayIcon: Electron.NativeImage;
-    try {
-      trayIcon = nativeImage.createFromPath(iconPath);      
-
+    const trayIcon = loadTrayIcon(iconName);
+    if (trayIcon && !trayIcon.isEmpty()) {
       // Platform-specific adjustments
       if (process.platform === 'darwin') {
         // macOS handles sizing automatically, but we can set template
         trayIcon.setTemplateImage(true);
       }
 
-      if (!trayIcon.isEmpty()) {
-        this.tray.setImage(trayIcon);
+      this.tray.setImage(trayIcon);
 
-        // Update tooltip to reflect status
-        const tooltip = hasLiveStreamers
-          ? 'Streamer Alerts - Streamers are live!'
-          : 'Streamer Alerts - Monitor your favorite streamers';
-        this.tray.setToolTip(tooltip);
-        logger.debug('Tray icon updated successfully');
-      } else {
-        logger.warn('Tray icon is empty after loading');
-      }
-    } catch (error) {
-      logger.warn('Could not update tray icon:', error);
+      // Update tooltip to reflect status
+      const tooltip = hasLiveStreamers
+        ? 'Streamer Alerts - Streamers are live!'
+        : 'Streamer Alerts - Monitor your favorite streamers';
+      this.tray.setToolTip(tooltip);
+      logger.debug('Tray icon updated successfully');
+    } else {
+      logger.warn('Could not load tray icon for update');
     }
   }
 
@@ -894,8 +896,8 @@ class StreamerAlertsApp {
   }
 
   private showNotification(streamer: StreamerStatus): void {
-
-    const iconPath = getIconPath(process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+    const iconName = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
+    const iconPath = getIconPath(iconName);
 
     const notification = new Notification({
       title: `🔴 ${streamer.displayName} is Live!`,

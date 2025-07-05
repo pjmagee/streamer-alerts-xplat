@@ -15,7 +15,10 @@ const config: ForgeConfig = {
     asar: true,
     icon: './images/icon',
     executableName: 'streamer-alerts-xplat',
-    appCopyright: 'Patrick Magee'
+    appCopyright: 'Patrick Magee',
+    extraResource: [
+      './images'
+    ]
   },
   rebuildConfig: {},
   makers: [
