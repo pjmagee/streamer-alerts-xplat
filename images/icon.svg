@@ -1,0 +1,14 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="64" cy="64" r="64" fill="#6C3EC3"></circle> <!-- Background circle (purple) -->
+  
+  <!-- Speaker icon -->
+  <rect x="36" y="48" width="16" height="32" rx="2" fill="white"></rect>
+  <polygon points="52,52 66,42 66,86 52,76" fill="white"></polygon>
+
+  <!-- Sound waves -->
+  <path d="M72,50 Q80,64 72,78" stroke="white" stroke-width="4" fill="none"></path>
+  <path d="M78,44 Q90,64 78,84" stroke="white" stroke-width="3" fill="none"></path>
+
+  <!-- Red dot for 'live' indicator -->
+  <circle cx="96" cy="32" r="12" fill="#FF3B3B" stroke="white" stroke-width="3"></circle>
+</svg>

@@ -167,8 +167,6 @@ function getBrowserDisplayName(browser: Browser, _buildId: string): string {
       return `Google Chrome (Downloaded)`;
     case Browser.CHROMIUM:
       return `Chromium (Downloaded)`;
-    case Browser.FIREFOX:
-      return `Firefox (Downloaded)`;
     default:
       return `${browser} (Downloaded)`;
   }
@@ -239,11 +237,6 @@ export async function getSupportedBrowsers(): Promise<Array<{ id: Browser; name:
       browser: Browser.CHROMIUM, 
       name: 'Chromium', 
       description: 'Open-source version of Chrome' 
-    },
-    { 
-      browser: Browser.FIREFOX, 
-      name: 'Mozilla Firefox', 
-      description: 'Mozilla Firefox browser' 
     }
   ];
 

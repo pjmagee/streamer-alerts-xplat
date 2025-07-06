@@ -13,6 +13,7 @@ const electronAPI: ElectronAPI = {
   setNotificationsEnabled: (enabled) => ipcRenderer.invoke('config:setNotificationsEnabled', enabled),
   getLaunchOnStartup: () => ipcRenderer.invoke('config:getLaunchOnStartup'),
   setLaunchOnStartup: (enabled) => ipcRenderer.invoke('config:setLaunchOnStartup', enabled),
+  isAppPackaged: () => ipcRenderer.invoke('app:isPackaged'),
   getStrategies: () => ipcRenderer.invoke('config:getStrategies'),
   setStrategies: (strategies) => ipcRenderer.invoke('config:setStrategies', strategies),
   setPlatformStrategy: (platform, strategy) => ipcRenderer.invoke('config:setPlatformStrategy', platform, strategy),

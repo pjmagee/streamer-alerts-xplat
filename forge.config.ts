@@ -25,7 +25,10 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       authors: 'Patrick Magee',
       iconUrl: 'https://raw.githubusercontent.com/pjmagee/streamer-alerts-xplat/main/images/icon.ico',
-      setupIcon: './images/icon.ico'
+      setupIcon: './images/icon.ico',
+      // Traditional certificate signing (if you have a .pfx file)
+      // certificateFile: './cert.pfx',
+      // certificatePassword: process.env.CERTIFICATE_PASSWORD
     }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({

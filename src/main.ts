@@ -2,7 +2,7 @@ import { app, BrowserWindow, Tray, Menu, nativeImage, Notification, ipcMain, she
 import path from 'node:path';
 import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
-import { updateElectronApp } from 'update-electron-app';
+import { updateElectronApp, UpdateSourceType } from 'update-electron-app';
 import { 
   StreamerService, 
   ConfigService,
@@ -81,8 +81,10 @@ class StreamerAlertsApp {
   private configService: ConfigService;
   private oauthService: OAuthService;
   private checkInterval: NodeJS.Timeout | null = null;
+  private newAccountCheckInterval: NodeJS.Timeout | null = null; // Separate interval for newly added accounts
   private notificationsEnabled = true;
   private hasLiveStreamers = false; // Track if any streamers are live
+  private recentNotifications = new Map<string, number>(); // accountId -> timestamp to prevent duplicate notifications
 
   constructor() {
     logger.debug('StreamerAlertsApp constructor called');
@@ -97,7 +99,11 @@ class StreamerAlertsApp {
         updateElectronApp({
           updateInterval: '1 hour',
           logger: console, // Use console for update-electron-app logging
-          notifyUser: true
+          notifyUser: true,
+          updateSource: {
+            type: UpdateSourceType.ElectronPublicUpdateService,
+            repo: 'pjmagee/streamer-alerts-updates',
+          }
         });
       }
       
@@ -114,10 +120,15 @@ class StreamerAlertsApp {
   public cleanup(): void {
     logger.debug('Cleaning up StreamerAlertsApp resources');
     
-    // Clean up check interval
+    // Clean up check intervals
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
+    }
+    
+    if (this.newAccountCheckInterval) {
+      clearInterval(this.newAccountCheckInterval);
+      this.newAccountCheckInterval = null;
     }
 
     // Clean up tray - be more aggressive about cleanup
@@ -184,6 +195,10 @@ class StreamerAlertsApp {
         clearInterval(this.checkInterval);
       }
       
+      if (this.newAccountCheckInterval) {
+        clearInterval(this.newAccountCheckInterval);
+      }
+      
       // Reset stream status if configured
       const smartConfig = this.configService.getSmartChecking();
       if (smartConfig.resetStatusOnAppClose) {
@@ -208,7 +223,12 @@ class StreamerAlertsApp {
   private setupIPC(): void {
     // Config IPC handlers
     ipcMain.handle('config:getAccounts', () => this.configService.getAccounts());
-    ipcMain.handle('config:addAccount', (_, account) => this.configService.addAccount(account));
+    ipcMain.handle('config:addAccount', async (_, account) => {
+      const newAccount = this.configService.addAccount(account);
+      // Start the new account background check loop if not already running
+      this.startNewAccountCheckLoop();
+      return newAccount;
+    });
     ipcMain.handle('config:updateAccount', (_, id, updates) => this.configService.updateAccount(id, updates));
     ipcMain.handle('config:removeAccount', (_, id) => this.configService.removeAccount(id));
     ipcMain.handle('config:getNotificationsEnabled', () => this.configService.isNotificationsEnabled());
@@ -225,6 +245,10 @@ class StreamerAlertsApp {
           clearInterval(this.checkInterval);
           this.checkInterval = null;
         }
+        if (this.newAccountCheckInterval) {
+          clearInterval(this.newAccountCheckInterval);
+          this.newAccountCheckInterval = null;
+        }
       }
     });
 
@@ -234,6 +258,7 @@ class StreamerAlertsApp {
       this.configService.setLaunchOnStartupEnabled(enabled);
       this.setAutoLaunch(enabled);
     });
+    ipcMain.handle('app:isPackaged', () => app.isPackaged);
 
     // API Credentials IPC handlers
     ipcMain.handle('config:getApiCredentials', () => this.configService.getApiCredentials());
@@ -655,12 +680,44 @@ class StreamerAlertsApp {
 
   private setAutoLaunch(enabled: boolean): void {
     try {
+      // Only enable auto-launch for packaged apps (not in development)
+      if (!app.isPackaged && enabled) {
+        logger.warn('Auto-launch is not supported in development mode');
+        return;
+      }
+
+      // For Windows with Squirrel, use the stub launcher instead of the actual executable
+      let launchPath = process.execPath;
+      let args: string[] = [];
+
+      if (process.platform === 'win32' && app.isPackaged) {
+        // Follow Electron's official documentation for Squirrel compatibility
+        // Use the executable name one directory up, which is the Squirrel stub
+        const appFolder = path.dirname(process.execPath);
+        const executableName = path.basename(process.execPath);
+        const stubLauncher = path.resolve(appFolder, '..', executableName);
+        
+        // Check if the stub launcher exists (indicates Squirrel installation)
+        try {
+          if (fs.existsSync(stubLauncher)) {
+            launchPath = stubLauncher;
+            // No special args needed for the stub launcher
+            logger.info('Using Squirrel stub launcher for auto-launch:', stubLauncher);
+          } else {
+            logger.info('Squirrel stub launcher not found, using direct executable path');
+          }
+        } catch (error) {
+          logger.warn('Could not check for Squirrel stub launcher, using default path:', error);
+        }
+      }
+
       app.setLoginItemSettings({
         openAtLogin: enabled,
-        name: 'Streamer Alerts',
-        path: process.execPath
+        path: launchPath,
+        args: args
       });
-      logger.info(`Auto-launch ${enabled ? 'enabled' : 'disabled'}`);
+
+      logger.info(`Auto-launch ${enabled ? 'enabled' : 'disabled'} (packaged: ${app.isPackaged}, path: ${launchPath})`);
     } catch (error) {
       logger.error('Failed to set auto-launch:', error);
     }
@@ -677,6 +734,8 @@ class StreamerAlertsApp {
       clearInterval(this.checkInterval);
     }
 
+    // Perform immediate check on startup - this is the first interval
+    logger.info('🚀 Application starting - performing initial stream status check...');
     await this.checkStreamStatus();
     this.scheduleNextCheck();
   }
@@ -687,46 +746,38 @@ class StreamerAlertsApp {
     }
 
     const accounts = this.configService.getAccounts();
+
+    if (!this.notificationsEnabled || accounts.length === 0) {
+      logger.info('⏳ Notifications disabled or no accounts - no checks scheduled');
+      return;
+    }
+
+    // Use a dynamic scanning interval based on the shortest configured check interval
+    // This ensures we don't miss accounts that should be checked more frequently
     const smartConfig = this.configService.getSmartChecking();
-    const now = Date.now();
-
-    // Find the account that needs to be checked next
-    let nextCheckTime = Infinity;
-    let hasAccountsWithoutSchedule = false;
     
-    for (const account of accounts) {
-      if (account.nextCheckTime && account.nextCheckTime < nextCheckTime) {
-        nextCheckTime = account.nextCheckTime;
-      } else if (!account.nextCheckTime) {
-        // Account has no schedule (likely reset or new)
-        hasAccountsWithoutSchedule = true;
-      }
-    }
-
-    // If we have accounts without schedule, check them immediately
-    if (hasAccountsWithoutSchedule) {
-      nextCheckTime = now + 5000; // 5 seconds delay to allow UI to load
-      logger.info(`⏳ Found accounts without schedule - checking in 5 seconds`);
-    } else if (nextCheckTime === Infinity) {
-      // If no specific time set and no unscheduled accounts, use default interval
-      nextCheckTime = now + (smartConfig.offlineCheckInterval * 60 * 1000); // Convert minutes to ms
-      logger.info(`⏳ No scheduled checks found - using default interval`);
-    }
-
-    const delay = Math.max(0, nextCheckTime - now);
+    // Find the shortest interval from smart config (convert minutes to ms)
+    const shortestConfiguredInterval = Math.min(
+      smartConfig.onlineCheckInterval * 60 * 1000,
+      smartConfig.offlineCheckInterval * 60 * 1000
+    );
+    
+    // Use the shorter of: configured interval or 5 minutes (as a reasonable maximum)
+    const MAX_SCAN_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes maximum
+    const SCAN_INTERVAL_MS = Math.min(shortestConfiguredInterval, MAX_SCAN_INTERVAL_MS);
     
     this.checkInterval = setTimeout(async () => {
       await this.checkStreamStatus();
       this.scheduleNextCheck();
-    }, delay);
+    }, SCAN_INTERVAL_MS);
 
-    const nextCheckMinutes = Math.round(delay / 1000 / 60);
-    const nextCheckSeconds = Math.round(delay / 1000);
+    const scanMinutes = Math.round(SCAN_INTERVAL_MS / 1000 / 60);
+    const scanSeconds = Math.round(SCAN_INTERVAL_MS / 1000);
     
-    if (nextCheckMinutes > 0) {
-      logger.info(`⏳ Next check cycle scheduled in ${nextCheckMinutes} minutes`);
+    if (scanMinutes > 0) {
+      logger.info(`⏳ Next scan scheduled in ${scanMinutes} minutes`);
     } else {
-      logger.info(`⏳ Next check cycle scheduled in ${nextCheckSeconds} seconds`);
+      logger.info(`⏳ Next scan scheduled in ${scanSeconds} seconds`);
     }
   }
 
@@ -741,10 +792,24 @@ class StreamerAlertsApp {
       const smartConfig = this.configService.getSmartChecking();
       const now = Date.now();
       
-      // Filter accounts that need checking
+      // Filter accounts that need checking (excluding newly added accounts)
       const accountsToCheck = accounts.filter(account => {
-        // If no nextCheckTime set, check it
-        if (!account.nextCheckTime) return true;
+        // Skip newly added accounts - they're handled by the separate background loop
+        if (account.isNewlyAdded) return false;
+        
+        // If no nextCheckTime set, check if we should schedule it
+        if (!account.nextCheckTime) {
+          // If online checks are disabled and account was last seen live, 
+          // set a far-future nextCheckTime to prevent infinite checking
+          if (smartConfig.disableOnlineChecks && account.lastStatus === 'live') {
+            logger.debug(`Setting far-future nextCheckTime for ${account.displayName || account.username} (online checks disabled, was live)`);
+            this.configService.updateAccount(account.id, {
+              nextCheckTime: now + (365 * 24 * 60 * 60 * 1000) // 1 year in the future
+            });
+            return false;
+          }
+          return true;
+        }
         
         // Check if it's time to check this account
         return account.nextCheckTime <= now;
@@ -794,11 +859,12 @@ class StreamerAlertsApp {
         if (isOnline) {
           // Stream is online
           if (smartConfig.disableOnlineChecks) {
-            // Don't schedule next check if online checks are disabled
-            accountUpdate.nextCheckTime = undefined;
+            // Set a far future check time to prevent infinite scheduling loop
+            // This account will only be re-checked if it goes offline or when user manually checks
+            accountUpdate.nextCheckTime = now + (365 * 24 * 60 * 60 * 1000); // 1 year in the future
             accountUpdate.currentCheckInterval = undefined;
             accountUpdate.consecutiveOfflineChecks = 0;
-            logger.info(`  ⏸️  ${update.displayName}: Online checks disabled - no next check scheduled`);
+            logger.info(`  ⏸️  ${update.displayName}: Online checks disabled - next check scheduled far in future to prevent re-checking`);
           } else {
             // Use online check interval
             const nextCheck = this.calculateNextCheckTime(
@@ -890,6 +956,28 @@ class StreamerAlertsApp {
   private showLiveNotification(streamer: StreamerStatus): void {
     if (!this.notificationsEnabled || !Notification.isSupported()) return;
 
+    // Check for duplicate notifications within the last 30 seconds
+    const now = Date.now();
+    const lastNotificationTime = this.recentNotifications.get(streamer.account.id);
+    const notificationCooldownMs = 30 * 1000; // 30 seconds
+
+    if (lastNotificationTime && (now - lastNotificationTime) < notificationCooldownMs) {
+      const secondsSinceLastNotification = Math.round((now - lastNotificationTime) / 1000);
+      logger.info(`⏭️  Skipping duplicate notification for ${streamer.displayName} (last notification ${secondsSinceLastNotification}s ago, within ${notificationCooldownMs/1000}s cooldown)`);
+      return;
+    }
+
+    // Record this notification
+    this.recentNotifications.set(streamer.account.id, now);
+
+    // Clean up old entries (older than 5 minutes) to prevent memory leaks
+    const fiveMinutesAgo = now - (5 * 60 * 1000);
+    for (const [accountId, timestamp] of this.recentNotifications.entries()) {
+      if (timestamp < fiveMinutesAgo) {
+        this.recentNotifications.delete(accountId);
+      }
+    }
+
     logger.info(`Creating notification for ${streamer.displayName} (${streamer.platform}) with URL: ${streamer.url}`);
 
     this.showNotification(streamer);
@@ -975,6 +1063,128 @@ class StreamerAlertsApp {
       }
     } catch (error) {
       logger.error('Error validating stored tokens:', error);
+    }
+  }
+
+  private startNewAccountCheckLoop(): void {
+    // If already running, don't start another
+    if (this.newAccountCheckInterval) {
+      return;
+    }
+
+    logger.info('🆕 Starting background check loop for newly added accounts');
+    
+    // Check every 5 seconds for newly added accounts
+    this.newAccountCheckInterval = setInterval(async () => {
+      await this.processNewlyAddedAccounts();
+    }, 5000);
+  }
+
+  private async processNewlyAddedAccounts(): Promise<void> {
+    if (!this.notificationsEnabled) return;
+
+    const accounts = this.configService.getAccounts();
+    const newlyAddedAccounts = accounts.filter(account => account.isNewlyAdded);
+
+    if (newlyAddedAccounts.length === 0) {
+      // No newly added accounts, stop the background loop
+      if (this.newAccountCheckInterval) {
+        clearInterval(this.newAccountCheckInterval);
+        this.newAccountCheckInterval = null;
+        logger.info('🆕 No more newly added accounts - stopping background check loop');
+      }
+      return;
+    }
+
+    logger.info(`🆕 Processing ${newlyAddedAccounts.length} newly added accounts...`);
+
+    try {
+      const statusUpdates = await this.streamerService.checkMultipleStreamers(newlyAddedAccounts);
+      const smartConfig = this.configService.getSmartChecking();
+      const now = Date.now();
+
+      for (const update of statusUpdates) {
+        const account = newlyAddedAccounts.find(a => a.id === update.account.id);
+        if (!account) continue;
+
+        // Update basic account info and mark as no longer newly added
+        const accountUpdate: Partial<StreamerAccount> = {
+          lastStatus: update.account.lastStatus,
+          lastChecked: update.account.lastChecked,
+          isNewlyAdded: false // Clear the newly added flag
+        };
+
+        // Calculate next check time based on current status
+        if (update.isLive) {
+          // Stream is online
+          if (smartConfig.disableOnlineChecks) {
+            // Set a far future check time to prevent infinite scheduling loop
+            // This account will only be re-checked if it goes offline or when user manually checks
+            accountUpdate.nextCheckTime = now + (365 * 24 * 60 * 60 * 1000); // 1 year in the future
+            accountUpdate.currentCheckInterval = undefined;
+            accountUpdate.consecutiveOfflineChecks = 0;
+            logger.info(`  ⏸️  ${update.displayName}: Online checks disabled - next check scheduled far in future to prevent re-checking`);
+          } else {
+            const nextCheck = this.calculateNextCheckTime(
+              smartConfig.onlineCheckInterval * 60 * 1000,
+              smartConfig.jitterPercentage
+            );
+            accountUpdate.nextCheckTime = nextCheck;
+            accountUpdate.currentCheckInterval = smartConfig.onlineCheckInterval * 60 * 1000;
+            accountUpdate.consecutiveOfflineChecks = 0;
+            
+            const nextCheckMinutes = Math.round((nextCheck - now) / 1000 / 60);
+            logger.info(`  ⏰ ${update.displayName}: Next online check in ~${nextCheckMinutes} minutes`);
+          }
+        } else {
+          // Stream is offline - use offline check interval (first check, so no exponential backoff)
+          const interval = smartConfig.offlineCheckInterval * 60 * 1000;
+          const nextCheck = this.calculateNextCheckTime(interval, smartConfig.jitterPercentage);
+          accountUpdate.nextCheckTime = nextCheck;
+          accountUpdate.currentCheckInterval = interval;
+          accountUpdate.consecutiveOfflineChecks = 1;
+          
+          const nextCheckMinutes = Math.round((nextCheck - now) / 1000 / 60);
+          logger.info(`  ⏰ ${update.displayName}: Next offline check in ~${nextCheckMinutes} minutes`);
+        }
+
+        // Update the config service
+        this.configService.updateAccount(account.id, accountUpdate);
+        
+        // Update the account object for consistency
+        update.account.nextCheckTime = accountUpdate.nextCheckTime;
+        update.account.currentCheckInterval = accountUpdate.currentCheckInterval;
+        update.account.consecutiveOfflineChecks = accountUpdate.consecutiveOfflineChecks;
+        update.account.isNewlyAdded = false;
+
+        // Update tray icon if needed
+        const hasLiveStreamers = update.isLive || this.hasLiveStreamers;
+        if (this.hasLiveStreamers !== hasLiveStreamers) {
+          this.hasLiveStreamers = hasLiveStreamers;
+          this.updateTrayIcon(hasLiveStreamers);
+        }
+
+        // Show notification for newly added accounts that are live (gives user feedback)
+        // This helps users see what notifications look like and confirms the account was added successfully
+        if (update.isLive) {
+          logger.info(`  🔔 ${update.displayName}: Newly added account is live - showing notification for user feedback`);
+          this.showLiveNotification(update);
+        } else {
+          const statusIcon = update.isLive ? '🟢 LIVE' : '🔴 OFFLINE';
+          logger.info(`  ${statusIcon} ${update.displayName}: Initial check complete (offline, no notification)`);
+        }
+
+        // Send update to renderer if window is open (for UI updates only)
+        if (this.mainWindow) {
+          this.mainWindow.webContents.send('stream:statusUpdate', [update]);
+        }
+      }
+
+      // Reschedule regular checks to account for the new accounts
+      this.scheduleNextCheck();
+
+    } catch (error) {
+      logger.error(`❌ Error processing newly added accounts:`, error);
     }
   }
 }

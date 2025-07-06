@@ -20,15 +20,14 @@ export class ConfigService implements IScrapingConfigService {
         accounts: [],
         notificationsEnabled: true,
         launchOnStartup: false, // Default to not launching on startup
-        checkInterval: 120000, // 2 minutes - kept for backward compatibility
         smartChecking: {
           onlineCheckInterval: 30, // 30 minutes
-          offlineCheckInterval: 3, // 3 minutes
+          offlineCheckInterval: 2, // 2 minutes
           exponentialBackoffMultiplier: 1.8, // More aggressive backoff than 1.5
           backoffMaxInterval: 45, // 45 minutes
-          jitterPercentage: 15, // Better spread of API requests
-          disableOnlineChecks: false, // Keep checking online channels by default
-          resetStatusOnAppClose: false // Preserve status across app restarts
+          jitterPercentage: 20, // Better spread of API requests
+          disableOnlineChecks: true, // Keep checking online channels by default
+          resetStatusOnAppClose: true // Preserve status across app restarts
         },
         windowSettings: {
           width: 1280,
@@ -81,7 +80,8 @@ export class ConfigService implements IScrapingConfigService {
       ...account,
       id: this.generateId(),
       enabled: true,
-      lastStatus: 'offline'
+      lastStatus: 'offline',
+      isNewlyAdded: true // Mark as newly added for initial background check
     };
 
     accounts.push(newAccount);

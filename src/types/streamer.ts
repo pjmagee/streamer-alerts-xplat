@@ -10,6 +10,7 @@ export interface StreamerAccount {
   consecutiveOfflineChecks?: number; // Number of consecutive offline checks
   nextCheckTime?: number; // When to check this channel next (timestamp)
   currentCheckInterval?: number; // Current interval for this specific channel (in ms)
+  isNewlyAdded?: boolean; // Flag to track if this account was just added and needs initial check
 }
 
 export interface StreamerStatus {
@@ -75,7 +76,6 @@ export interface AppConfig {
   accounts: StreamerAccount[];
   notificationsEnabled: boolean;
   launchOnStartup: boolean;
-  checkInterval: number; // Legacy - kept for backward compatibility
   smartChecking: SmartCheckingConfig;
   windowSettings: {
     width: number;

@@ -68,6 +68,7 @@ export interface ElectronAPI {
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   getLaunchOnStartup: () => Promise<boolean>;
   setLaunchOnStartup: (enabled: boolean) => Promise<void>;
+  isAppPackaged: () => Promise<boolean>;
   getStrategies: () => Promise<PlatformStrategies>;
   setStrategies: (strategies: PlatformStrategies) => Promise<void>;
   setPlatformStrategy: (platform: keyof PlatformStrategies, strategy: PlatformStrategies[keyof PlatformStrategies]) => Promise<void>;
@@ -87,7 +88,7 @@ export interface ElectronAPI {
   authenticateKick: () => Promise<AuthResult>;
   logoutKick: () => Promise<void>;
   getAccounts: () => Promise<StreamerAccount[]>;
-  addAccount: (account: Omit<StreamerAccount, 'id' | 'lastChecked' | 'lastStatus'>) => Promise<void>;
+  addAccount: (account: Omit<StreamerAccount, 'id' | 'lastChecked' | 'lastStatus'>) => Promise<StreamerAccount>;
   updateAccount: (id: string, updates: Partial<StreamerAccount>) => Promise<void>;
   removeAccount: (id: string) => Promise<void>;
   checkStreamStatus: (account: StreamerAccount) => Promise<StreamerStatus[]>;

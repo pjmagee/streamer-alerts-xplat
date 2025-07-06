@@ -59,6 +59,8 @@ const logger = winston.createLogger({
   exceptionHandlers: [
     new winston.transports.File({
       filename: path.join(getLogPath(), 'exceptions.log'),
+      maxsize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 3,
       format: customFormat
     })
   ],
@@ -66,6 +68,8 @@ const logger = winston.createLogger({
   rejectionHandlers: [
     new winston.transports.File({
       filename: path.join(getLogPath(), 'rejections.log'),
+      maxsize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 3,
       format: customFormat
     })
   ]

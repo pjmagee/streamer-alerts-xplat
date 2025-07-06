@@ -129,7 +129,20 @@ class StreamerAlertsRenderer {
     const addAccountForm = document.getElementById('addAccountForm');
     const cancelAddBtn = document.getElementById('cancelBtn');
 
-    addAccountForm?.addEventListener('submit', (e) => this.handleAddAccount(e));
+    logger.info('Setting up modals...');
+    logger.info('Add account modal found:', !!this.addAccountModal);
+    logger.info('Add account form found:', !!addAccountForm);
+    logger.info('Cancel button found:', !!cancelAddBtn);
+
+    if (addAccountForm) {
+      addAccountForm.addEventListener('submit', (e) => {
+        logger.info('Form submit event triggered');
+        this.handleAddAccount(e);
+      });
+    } else {
+      logger.error('addAccountForm not found - modal setup failed');
+    }
+    
     cancelAddBtn?.addEventListener('click', () => this.hideAddAccountModal());
 
     // Edit Account Modal
@@ -325,6 +338,7 @@ class StreamerAlertsRenderer {
     try {
       const notificationsEnabled = await window.electronAPI.getNotificationsEnabled();
       const launchOnStartup = await window.electronAPI.getLaunchOnStartup();
+      const isPackaged = await window.electronAPI.isAppPackaged();
       const strategies = await window.electronAPI.getStrategies();
       const smartCheckingConfig = await window.electronAPI.getSmartChecking();
 
@@ -337,6 +351,24 @@ class StreamerAlertsRenderer {
 
       if (launchOnStartupCheckbox) {
         launchOnStartupCheckbox.checked = launchOnStartup;
+        
+        // Disable the checkbox and show warning in development mode
+        if (!isPackaged) {
+          launchOnStartupCheckbox.disabled = true;
+          launchOnStartupCheckbox.title = 'Launch on startup is only available in the packaged application';
+          
+          // Add a visual indicator
+          const parentLabel = launchOnStartupCheckbox.closest('label');
+          if (parentLabel && !parentLabel.querySelector('.dev-warning')) {
+            const warning = document.createElement('span');
+            warning.className = 'dev-warning';
+            warning.textContent = ' (Development mode - not available)';
+            warning.style.color = '#666';
+            warning.style.fontSize = '12px';
+            warning.style.fontStyle = 'italic';
+            parentLabel.appendChild(warning);
+          }
+        }
       }
 
       // Load strategy settings
@@ -551,8 +583,18 @@ class StreamerAlertsRenderer {
   }
 
   createAccountHTML(account: StreamerAccount): string {
-    const statusClass = account.lastStatus === 'live' ? 'live' : (account.lastStatus === undefined ? 'unknown' : 'offline');
-    const statusText = account.lastStatus === 'live' ? 'LIVE' : (account.lastStatus === undefined ? 'Unknown' : 'Offline');
+    // Handle status for newly added accounts
+    let statusClass: string;
+    let statusText: string;
+    
+    if (account.isNewlyAdded) {
+      statusClass = 'checking';
+      statusText = 'Checking...';
+    } else {
+      statusClass = account.lastStatus === 'live' ? 'live' : (account.lastStatus === undefined ? 'unknown' : 'offline');
+      statusText = account.lastStatus === 'live' ? 'LIVE' : (account.lastStatus === undefined ? 'Unknown' : 'Offline');
+    }
+    
     const enabledClass = account.enabled ? 'enabled' : 'disabled';
     const toggleText = account.enabled ? 'Disable' : 'Enable';
     
@@ -574,9 +616,9 @@ class StreamerAlertsRenderer {
     const streamUrl = this.getStreamUrl(account);
 
     // Format timing information
-    const lastCheckedText = this.formatLastChecked(account.lastChecked);
-    const nextCheckText = this.formatNextCheck(account.nextCheckTime);
-    const intervalText = this.formatInterval(account.currentCheckInterval);
+    const lastCheckedText = account.isNewlyAdded ? 'Checking...' : this.formatLastChecked(account.lastChecked);
+    const nextCheckText = account.isNewlyAdded ? 'Pending...' : this.formatNextCheck(account.nextCheckTime);
+    const intervalText = account.isNewlyAdded ? 'Initial check' : this.formatInterval(account.currentCheckInterval);
     const offlineChecksText = account.consecutiveOfflineChecks || 0;
 
     return `
@@ -680,14 +722,29 @@ class StreamerAlertsRenderer {
   }
 
   showAddAccountModal(): void {
+    logger.info('Attempting to show add account modal');
+    
     if (this.addAccountModal) {
+      logger.info('Modal element found, showing modal');
       this.addAccountModal.style.display = 'flex';
       
       // Reset form
       const form = document.getElementById('addAccountForm') as HTMLFormElement;
       if (form) {
+        logger.info('Form found, resetting form');
         form.reset();
+        
+        // Focus on the first input to test if inputs are working
+        const firstInput = form.querySelector('input, select') as HTMLElement;
+        if (firstInput) {
+          logger.info('Focusing first input');
+          setTimeout(() => firstInput.focus(), 100);
+        }
+      } else {
+        logger.error('addAccountForm not found when showing modal');
       }
+    } else {
+      logger.error('addAccountModal element not found');
     }
   }
 
@@ -725,23 +782,66 @@ class StreamerAlertsRenderer {
 
   async handleAddAccount(e: Event): Promise<void> {
     e.preventDefault();
+    
     const form = e.target as HTMLFormElement;
+    if (!form) {
+      logger.error('Form element not found');
+      return;
+    }
+
     const formData = new FormData(form);
+    const username = formData.get('username') as string;
+    const platform = formData.get('platform') as string;
+    const displayName = formData.get('displayName') as string;
+
+    // Validate required fields
+    if (!username || !platform) {
+      this.showError('Please fill in all required fields');
+      return;
+    }
 
     const account = {
-      username: formData.get('username') as string,
-      platform: formData.get('platform') as 'twitch' | 'youtube' | 'kick',
-      displayName: formData.get('displayName') as string || undefined,
+      username: username.trim(),
+      platform: platform as 'twitch' | 'youtube' | 'kick',
+      displayName: displayName?.trim() || undefined,
       enabled: true
     };
 
+    logger.info('Adding account:', account);
+
     try {
-      await window.electronAPI.addAccount(account);
-      await this.loadAccounts();
+      // Add the account (this is now non-blocking)
+      const newAccount = await window.electronAPI.addAccount(account);
+      
+      if (!newAccount) {
+        throw new Error('Failed to create account - no response from backend');
+      }
+      
+      logger.info('Account added successfully:', newAccount);
+      
+      // Add the account to local array immediately with "checking" status
+      this.accounts.push({
+        ...newAccount,
+        lastStatus: 'offline', // Default status
+        isNewlyAdded: true // Flag for showing "checking" state
+      });
+      
+      // Re-render to show the new account immediately
+      this.renderAccounts();
+      
+      // Hide modal and reset form
       this.hideAddAccountModal();
+      form.reset();
+      
+      // Show success notification
+      const displayName = account.displayName || account.username;
+      this.showToast('Added!', `${displayName} has been added to your list`, 'success', 3000);
+      
+      logger.info('UI updated with new account');
+      
     } catch (error) {
       logger.error('Failed to add account:', error);
-      this.showError('Failed to add account');
+      this.showError('Failed to add account. Please try again.');
     }
   }
 
@@ -867,8 +967,41 @@ class StreamerAlertsRenderer {
         statusBadge.textContent = status.isLive ? 'LIVE' : 'Offline';
       }
 
+      // Update the local accounts array to keep it in sync first
+      const localAccount = this.accounts.find(a => a.id === status.account.id);
+      const wasNewlyAdded = localAccount?.isNewlyAdded || false;
+      
+      if (localAccount) {
+        localAccount.lastStatus = status.account.lastStatus;
+        localAccount.lastChecked = status.account.lastChecked;
+        localAccount.nextCheckTime = status.account.nextCheckTime;
+        localAccount.currentCheckInterval = status.account.currentCheckInterval;
+        localAccount.consecutiveOfflineChecks = status.account.consecutiveOfflineChecks;
+        
+        // Clear the "newly added" flag once we get the first status update
+        if (localAccount.isNewlyAdded) {
+          localAccount.isNewlyAdded = false;
+          logger.info(`  ✅ ${status.displayName}: Initial check complete, clearing "newly added" flag`);
+        }
+      }
+
       // Update timing information in real-time
       this.updateAccountTimingInfo(accountElement, status.account);
+
+      // If this account was newly added, we need to refresh the timing text completely
+      // to transition from "Checking..." to actual values
+      if (wasNewlyAdded) {
+        const timingCards = accountElement.querySelectorAll('.timing-card .timing-value');
+        if (timingCards.length >= 3) {
+          (timingCards[0] as HTMLElement).textContent = this.formatLastChecked(status.account.lastChecked);
+          (timingCards[1] as HTMLElement).textContent = this.formatNextCheck(status.account.nextCheckTime);
+          (timingCards[2] as HTMLElement).textContent = this.formatInterval(status.account.currentCheckInterval);
+          if (timingCards[3]) {
+            (timingCards[3] as HTMLElement).textContent = String(status.account.consecutiveOfflineChecks || 0);
+          }
+        }
+        logger.info(`  🔄 ${status.displayName}: Updated timing display from "Checking..." to actual values`);
+      }
 
       // Add visual feedback for newly live streamers
       if (status.isLive && status.justWentLive) {
@@ -878,16 +1011,6 @@ class StreamerAlertsRenderer {
         setTimeout(() => {
           accountElement.classList.remove('just-went-live');
         }, 5000);
-      }
-
-      // Update the local accounts array to keep it in sync
-      const localAccount = this.accounts.find(a => a.id === status.account.id);
-      if (localAccount) {
-        localAccount.lastStatus = status.account.lastStatus;
-        localAccount.lastChecked = status.account.lastChecked;
-        localAccount.nextCheckTime = status.account.nextCheckTime;
-        localAccount.currentCheckInterval = status.account.currentCheckInterval;
-        localAccount.consecutiveOfflineChecks = status.account.consecutiveOfflineChecks;
       }
     });
   }
@@ -1735,7 +1858,6 @@ class StreamerAlertsRenderer {
         const browserIcons: Record<string, string> = {
           'chrome': '🟢',
           'chromium': '🔵', 
-          'firefox': '🟠',
           'edge': '🔷'
         };
         
