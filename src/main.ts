@@ -102,7 +102,7 @@ class StreamerAlertsApp {
           notifyUser: true,
           updateSource: {
             type: UpdateSourceType.ElectronPublicUpdateService,
-            repo: 'pjmagee/streamer-alerts-updates',
+            repo: 'pjmagee/streamer-alerts-xplat',
           }
         });
       }
