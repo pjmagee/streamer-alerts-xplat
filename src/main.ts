@@ -172,6 +172,7 @@ class StreamerAlertsApp {
     app.whenReady().then(async () => {
       this.createTray();
       await this.validateStoredTokens();
+      this.resetStatusOnStartup(); // Add this line
       this.initializeAutoLaunch();
       this.startStreamingChecks();
     });
@@ -197,21 +198,6 @@ class StreamerAlertsApp {
       
       if (this.newAccountCheckInterval) {
         clearInterval(this.newAccountCheckInterval);
-      }
-      
-      // Reset stream status if configured
-      const smartConfig = this.configService.getSmartChecking();
-      if (smartConfig.resetStatusOnAppClose) {
-        const accounts = this.configService.getAccounts();
-        for (const account of accounts) {
-          this.configService.updateAccount(account.id, {
-            lastStatus: undefined,
-            nextCheckTime: undefined,
-            currentCheckInterval: undefined,
-            consecutiveOfflineChecks: 0
-          });
-        }
-        logger.info('Stream statuses reset on app close');
       }
       
       await this.streamerService.cleanup();
@@ -1185,6 +1171,37 @@ class StreamerAlertsApp {
 
     } catch (error) {
       logger.error(`❌ Error processing newly added accounts:`, error);
+    }
+  }
+
+  private resetStatusOnStartup(): void {
+    const smartConfig = this.configService.getSmartChecking();
+    
+    if (smartConfig.resetStatusOnStartup) {
+      logger.info('🔄 Resetting streamer statuses on app startup (resetStatusOnStartup is enabled)');
+      
+      const accounts = this.configService.getAccounts();
+      let updatedCount = 0;
+      
+      accounts.forEach(account => {
+        if (account.lastStatus !== 'offline' || account.nextCheckTime) {
+          this.configService.updateAccount(account.id, {
+            lastStatus: 'offline',
+            nextCheckTime: undefined, // Clear any scheduled check times
+            currentCheckInterval: undefined, // Clear current check interval
+            consecutiveOfflineChecks: 0 // Reset offline check count
+          });
+          updatedCount++;
+        }
+      });
+      
+      if (updatedCount > 0) {
+        logger.info(`✅ Reset status for ${updatedCount} accounts to offline`);
+      } else {
+        logger.info('✅ No accounts needed status reset');
+      }
+    } else {
+      logger.info('ℹ️ Status reset on startup is disabled');
     }
   }
 }

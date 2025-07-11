@@ -330,7 +330,7 @@ class StreamerAlertsRenderer {
     const resetStatusOnCloseInput = document.getElementById('resetStatusOnClose') as HTMLInputElement;
     resetStatusOnCloseInput?.addEventListener('change', async (e) => {
       const target = e.target as HTMLInputElement;
-      await window.electronAPI.updateSmartCheckingSetting('resetStatusOnAppClose', target.checked);
+      await window.electronAPI.updateSmartCheckingSetting('resetStatusOnStartup', target.checked);
     });
   }
 
@@ -1090,8 +1090,8 @@ class StreamerAlertsRenderer {
 
     // Reset status on close
     const resetStatusOnCloseInput = document.getElementById('resetStatusOnClose') as HTMLInputElement;
-    if (resetStatusOnCloseInput && config.resetStatusOnAppClose !== undefined) {
-      resetStatusOnCloseInput.checked = config.resetStatusOnAppClose;
+    if (resetStatusOnCloseInput && config.resetStatusOnStartup !== undefined) {
+      resetStatusOnCloseInput.checked = config.resetStatusOnStartup;
     }
   }
 

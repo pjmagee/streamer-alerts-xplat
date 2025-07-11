@@ -68,8 +68,8 @@ export interface SmartCheckingConfig {
   // Stop checking channels when they're online
   disableOnlineChecks: boolean;
   
-  // Reset all channel statuses when app is closed/restarted
-  resetStatusOnAppClose: boolean;
+  // Reset all channel statuses when app starts up
+  resetStatusOnStartup: boolean;
 }
 
 export interface AppConfig {

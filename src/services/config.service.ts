@@ -27,7 +27,7 @@ export class ConfigService implements IScrapingConfigService {
           backoffMaxInterval: 45, // 45 minutes
           jitterPercentage: 20, // Better spread of API requests
           disableOnlineChecks: true, // Keep checking online channels by default
-          resetStatusOnAppClose: true // Preserve status across app restarts
+          resetStatusOnStartup: true // Reset status on app startup for clean state
         },
         windowSettings: {
           width: 1280,
@@ -292,7 +292,7 @@ export class ConfigService implements IScrapingConfigService {
       backoffMaxInterval: 45,   // 45 minutes
       jitterPercentage: 15,
       disableOnlineChecks: false,
-      resetStatusOnAppClose: false
+      resetStatusOnStartup: true // Renamed from resetStatusOnAppClose
     });
   }
 
