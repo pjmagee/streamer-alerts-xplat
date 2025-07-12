@@ -326,9 +326,9 @@ class StreamerAlertsRenderer {
       await window.electronAPI.updateSmartCheckingSetting('disableOnlineChecks', target.checked);
     });
 
-    // Reset status on close
-    const resetStatusOnCloseInput = document.getElementById('resetStatusOnClose') as HTMLInputElement;
-    resetStatusOnCloseInput?.addEventListener('change', async (e) => {
+    // Reset status on startup
+    const resetStatusOnStartupInput = document.getElementById('resetStatusOnStartup') as HTMLInputElement;
+    resetStatusOnStartupInput?.addEventListener('change', async (e) => {
       const target = e.target as HTMLInputElement;
       await window.electronAPI.updateSmartCheckingSetting('resetStatusOnStartup', target.checked);
     });
@@ -1088,10 +1088,10 @@ class StreamerAlertsRenderer {
       disableOnlineChecksInput.checked = config.disableOnlineChecks;
     }
 
-    // Reset status on close
-    const resetStatusOnCloseInput = document.getElementById('resetStatusOnClose') as HTMLInputElement;
-    if (resetStatusOnCloseInput && config.resetStatusOnStartup !== undefined) {
-      resetStatusOnCloseInput.checked = config.resetStatusOnStartup;
+    // Reset status on startup
+    const resetStatusOnStartupInput = document.getElementById('resetStatusOnStartup') as HTMLInputElement;
+    if (resetStatusOnStartupInput && config.resetStatusOnStartup !== undefined) {
+      resetStatusOnStartupInput.checked = config.resetStatusOnStartup;
     }
   }
 
@@ -1194,19 +1194,20 @@ class StreamerAlertsRenderer {
           </ul>
         `
       },
-      'resetStatusOnClose': {
-        title: 'Reset Stream Status on App Close',
+      'resetStatusOnStartup': {
+        title: 'Reset Stream Status on App Startup',
         content: `
-          <strong>Clear all stream statuses when app closes</strong>
+          <strong>Clear all stream statuses when app starts</strong>
           <br><br>
           <em>When enabled:</em>
           <ul>
-            <li>All streamers reset to "unknown" status on startup</li>
+            <li>All streamers reset to "offline" status on startup</li>
             <li>Polling intervals reset to base values</li>
             <li>Fresh start every time you open the app</li>
+            <li>Handles crashes and unexpected shutdowns gracefully</li>
           </ul>
           <br>
-          <em>💡 Tip:</em> Useful for testing or if you want clean state each session.
+          <em>💡 Tip:</em> Recommended for reliable notifications, especially with auto-launch on startup.
         `
       }
     };
