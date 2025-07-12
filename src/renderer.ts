@@ -562,10 +562,12 @@ class StreamerAlertsRenderer {
       const editBtn = document.getElementById(`edit-${account.id}`);
       const deleteBtn = document.getElementById(`delete-${account.id}`);
       const toggleBtn = document.getElementById(`toggle-${account.id}`);
+      const refreshBtn = document.getElementById(`refresh-${account.id}`);
 
       editBtn?.addEventListener('click', () => this.showEditAccountModal(account.id));
       deleteBtn?.addEventListener('click', () => this.deleteAccount(account.id));
       toggleBtn?.addEventListener('click', () => this.toggleAccount(account.id));
+      refreshBtn?.addEventListener('click', () => this.refreshAccount(account.id));
     });
 
     // Add event listeners for streamer links
@@ -639,6 +641,7 @@ class StreamerAlertsRenderer {
             <div class="account-actions">
               <button id="edit-${account.id}" class="btn btn-secondary btn-sm">Edit</button>
               <button id="toggle-${account.id}" class="btn btn-secondary btn-sm">${toggleText}</button>
+              <button id="refresh-${account.id}" class="btn btn-primary btn-sm" title="Refresh status">🔄</button>
               <button id="delete-${account.id}" class="btn btn-danger btn-sm">Delete</button>
             </div>
           </div>
@@ -878,6 +881,93 @@ class StreamerAlertsRenderer {
         logger.error('Failed to delete account:', error);
         this.showError('Failed to delete streamer. Please try again.');
       }
+    }
+  }
+
+  async refreshAccount(id: string): Promise<void> {
+    const account = this.accounts.find(acc => acc.id === id);
+    if (!account) return;
+
+    const refreshBtn = document.getElementById(`refresh-${id}`) as HTMLButtonElement;
+    if (!refreshBtn) return;
+
+    try {
+      // Disable button and show loading state
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '⏳';
+      refreshBtn.title = 'Refreshing...';
+
+      logger.info(`Manual refresh requested for ${account.displayName || account.username}`);
+
+      // Call the stream check for this specific account
+      const result = await window.electronAPI.checkStreamStatus(account);
+      
+      if (result && result.length > 0) {
+        const updatedStatus = result[0];
+        
+        // Update the account in our local array
+        const accountIndex = this.accounts.findIndex(acc => acc.id === id);
+        if (accountIndex !== -1) {
+          // Update the local account with new status
+          this.accounts[accountIndex] = {
+            ...this.accounts[accountIndex],
+            lastStatus: updatedStatus.account.lastStatus,
+            nextCheckTime: updatedStatus.account.nextCheckTime,
+            currentCheckInterval: updatedStatus.account.currentCheckInterval,
+            consecutiveOfflineChecks: updatedStatus.account.consecutiveOfflineChecks
+          };
+        }
+
+        // Update the UI for this specific account
+        await this.updateAccountCard(id, updatedStatus);
+        
+        // Show success message
+        const statusText = updatedStatus.isLive ? 'online' : 'offline';
+        this.showSuccess(`${account.displayName || account.username} status refreshed: ${statusText}`);
+        
+        logger.info(`Manual refresh completed for ${account.displayName || account.username}: ${statusText}`);
+      } else {
+        throw new Error('No status result returned');
+      }
+    } catch (error) {
+      logger.error('Failed to refresh account status:', error);
+      this.showError(`Failed to refresh ${account.displayName || account.username}. Please try again.`);
+    } finally {
+      // Restore button state
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '🔄';
+      refreshBtn.title = 'Refresh status';
+    }
+  }
+
+  async updateAccountCard(id: string, updatedStatus: StreamerStatus): Promise<void> {
+    // Find the account card in the DOM
+    const accountCard = document.querySelector(`[data-account-id="${id}"]`);
+    if (!accountCard) {
+      // If card not found, reload the entire accounts view
+      await this.loadAccounts();
+      return;
+    }
+
+    // Update status badge
+    const statusBadge = accountCard.querySelector('.status-badge');
+    if (statusBadge) {
+      const isLive = updatedStatus.isLive;
+      const statusClass = isLive ? 'live' : 'offline';
+      const statusText = isLive ? 'LIVE' : 'OFFLINE';
+      
+      statusBadge.className = `status-badge status-${statusClass}`;
+      statusBadge.textContent = statusText;
+    }
+
+    // Update timing information
+    const timingCards = accountCard.querySelectorAll('.timing-content');
+    if (timingCards.length >= 2) {
+      // Update "Last Checked" (first timing card)
+      (timingCards[0] as HTMLElement).textContent = this.formatLastChecked();
+      
+      // Update "Next Check" (second timing card)
+      (timingCards[1] as HTMLElement).textContent = this.formatNextCheck(updatedStatus.account.nextCheckTime);
     }
   }
 
