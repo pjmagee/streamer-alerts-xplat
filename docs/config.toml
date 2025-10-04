@@ -1,7 +1,9 @@
 baseURL = "https://sax.magaoidh.pro/"
 languageCode = "en-gb"
 title = "Streamer Alerts XPlat"
-paginate = 5
+
+[pagination]
+  pagerSize = 5
 enableRobotsTXT = true
 copyright = "© 2025 Streamer Alerts"
 
