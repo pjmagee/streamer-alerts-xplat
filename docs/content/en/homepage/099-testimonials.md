@@ -90,4 +90,3 @@ header_menu: false
 — **TripleBootGremlin** (macOS / Win11 / Manjaro, fav: esports analyst desks)
 
 ---
- 
