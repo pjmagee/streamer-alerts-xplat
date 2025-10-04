@@ -176,13 +176,76 @@ function getBrowserDisplayName(browser: Browser, _buildId: string): string {
  * Find the first available downloaded browser
  */
 export async function findFirstAvailableBrowser(cacheDir?: string): Promise<DownloadedBrowser | null> {
+  // 0. Explicit override via env var (useful in CI)
+  const explicitPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (explicitPath && validateBrowserPath(explicitPath)) {
+    return {
+      browser: Browser.CHROMIUM,
+      buildId: 'env',
+      path: explicitPath,
+      platform: detectBrowserPlatform() || BrowserPlatform.LINUX,
+      name: 'Explicit Puppeteer Browser'
+    };
+  }
+
   const browsers = await getDownloadedBrowsers(cacheDir);
-  
-  // Prefer Chrome first, then others
+
+  // 1. Prefer Chrome first, then others
   const chrome = browsers.find(b => b.browser === Browser.CHROME);
   if (chrome) return chrome;
-  
-  return browsers.length > 0 ? browsers[0] : null;
+
+  if (browsers.length > 0) return browsers[0];
+
+  // 2. Fallback: look for local project-level install (e.g., chromium/<platform-build>/...)
+  try {
+    const projectRoot = process.cwd();
+    const candidates: string[] = [];
+    const platform = os.platform();
+    if (platform === 'darwin') {
+      candidates.push(path.join(projectRoot, 'chromium')); // search recursively below
+    } else if (platform === 'linux') {
+      candidates.push(path.join(projectRoot, 'chromium'));
+    } else if (platform === 'win32') {
+      candidates.push(path.join(projectRoot, 'chromium'));
+    }
+
+    for (const base of candidates) {
+      if (!fs.existsSync(base)) continue;
+      // Walk one level deep to find executable-like paths
+      const dirs = fs.readdirSync(base);
+      for (const dir of dirs) {
+        const full = path.join(base, dir);
+        if (fs.statSync(full).isDirectory()) {
+          // Heuristic executable locations
+          const possible: string[] = [];
+          if (platform === 'darwin') {
+            possible.push(path.join(full, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'));
+            possible.push(path.join(full, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chrome')); // alternative
+          } else if (platform === 'linux') {
+            possible.push(path.join(full, 'chrome-linux', 'chrome'));
+          } else if (platform === 'win32') {
+            possible.push(path.join(full, 'chrome-win', 'chrome.exe'));
+          }
+          for (const p of possible) {
+            if (validateBrowserPath(p)) {
+              logger.info(`Detected project-local Chromium at ${p}`);
+              return {
+                browser: Browser.CHROMIUM,
+                buildId: 'local-project',
+                path: p,
+                platform: detectBrowserPlatform() || BrowserPlatform.LINUX,
+                name: 'Project Chromium (Downloaded)'
+              };
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('Local project Chromium detection failed:', err);
+  }
+
+  return null;
 }
 
 /**

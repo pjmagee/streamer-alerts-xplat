@@ -1,7 +1,8 @@
 import { dialog } from 'electron';
 import puppeteer, { Browser as PuppeteerBrowser, LaunchOptions } from 'puppeteer-core';
 import logger from '../utils/logger';
-import { validateBrowserPath, findFirstAvailableBrowser } from '../utils/browser-manager';
+import { validateBrowserPath, findFirstAvailableBrowser, installBrowser } from '../utils/browser-manager';
+import { Browser as DownloadBrowser } from '@puppeteer/browsers';
 
 export interface PuppeteerStatus {
   isAvailable: boolean;
@@ -71,7 +72,24 @@ export class PuppeteerManagerService {
         browserName = detected.browser;
         logger.info(`Using auto-detected browser: ${browserName} at ${browserPath}`);
       } else {
-        logger.warn('No compatible browser found');
+  logger.warn('No compatible browser found via cache or env/path heuristics');
+        // CI auto-install fallback: if running in CI or explicit env flag, attempt to download Chromium
+        const shouldAutoDownload = !!process.env.CI || process.env.AUTO_DOWNLOAD_BROWSER === 'true';
+        if (shouldAutoDownload) {
+          logger.info('Attempting automatic Chromium download for CI environment...');
+          try {
+            const result = await installBrowser(DownloadBrowser.CHROMIUM, 'latest');
+            if (result.success && result.browser) {
+              browserPath = result.browser.path;
+              browserName = result.browser.name;
+              logger.info(`Downloaded and using ${browserName} at ${browserPath}`);
+            } else {
+              logger.warn(`Automatic Chromium download failed: ${result.error || 'Unknown error'}`);
+            }
+          } catch (e) {
+            logger.error('Error during automatic Chromium download:', e);
+          }
+        }
       }
     }
     
@@ -117,10 +135,10 @@ export class PuppeteerManagerService {
         }
       } else {
         // No browser found - cannot use puppeteer-core without a browser
-        logger.warn('No browser executable found and puppeteer-core requires an executable path');
+        logger.warn('No browser executable found after checking PUPPETEER_EXECUTABLE_PATH, cache, and project-local chromium directory');
         this._status = {
           isAvailable: false,
-          message: 'No compatible browser found - please download a browser using the Browser tab'
+          message: 'No compatible browser found - ensure CI installs Chromium or run "npx @puppeteer/browsers install chromium@latest"'
         };
         return this._status;
       }
