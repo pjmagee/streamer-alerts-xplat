@@ -319,7 +319,7 @@ export class ScrapingService {
     try {
       const page = await this.getKickPage();
 
-      await page.goto(`https://kick.com/${username}`, { waitUntil: 'load' });
+      await page.goto(`https://kick.com/${username}`, { waitUntil: 'domcontentloaded' });
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Check for LIVE indicator

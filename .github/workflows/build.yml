@@ -36,17 +36,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Puppeteer browser caching (match CI approach)
-      - name: Cache Puppeteer browsers (workspace)
+      # Puppeteer Chrome caching (match CI approach)
+      - name: Cache Puppeteer Chrome (workspace)
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/chromium
-          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          path: ${{ github.workspace }}/chrome
+          key: puppeteer-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
-            puppeteer-${{ runner.os }}-
+            puppeteer-chrome-${{ runner.os }}-
 
-      - name: Install Chromium (workspace)
-        run: npx @puppeteer/browsers install chromium@latest
+      - name: Install Chrome (workspace)
+        run: npx @puppeteer/browsers install chrome@latest
         env:
           PUPPETEER_CACHE_DIR: ${{ github.workspace }}
 

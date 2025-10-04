@@ -91,6 +91,10 @@ typings/
 # Electron-Forge
 out/
 
+# Puppeteer downloaded browsers (cache)
+chromium/
+chrome/
+
 # Configuration files with sensitive data
 config/config.local.json
 config/config.prod.json
