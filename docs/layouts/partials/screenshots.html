@@ -1,0 +1,16 @@
+{{ $shots := .Site.Params.screenshots }}
+{{ if gt (len $shots) 0 }}
+<section id="screenshots" class="screenshots">
+  <h2>Screenshots</h2>
+  <div class="screenshot-grid">
+    {{ range $shots }}
+      <figure class="screenshot-item">
+        <div class="screenshot-frame">
+          <img loading="lazy" src="/{{ .file }}" alt="{{ .title }} screenshot" />
+        </div>
+        <figcaption>{{ .title }}</figcaption>
+      </figure>
+    {{ end }}
+  </div>
+</section>
+{{ end }}

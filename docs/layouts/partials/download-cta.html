@@ -1,0 +1,9 @@
+{{ $url := .Site.Params.download_url }}
+{{ if $url }}
+<div class="download-cta">
+  <a class="download-button" href="{{ $url }}" rel="noopener" target="_blank">
+    ⬇ Download Latest Release
+  </a>
+  <p class="download-hint">Opens the GitHub Releases page (auto-updating app installers for Windows, macOS & Linux).</p>
+</div>
+{{ end }}

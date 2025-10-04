@@ -1,0 +1,10 @@
+{{/* Custom head additions for carousel assets */}}
+{{ with resources.Get "css/carousel.css" }}
+	{{ $c := . | minify | fingerprint }}
+	<link rel="stylesheet" href="{{ $c.RelPermalink }}" integrity="{{ $c.Data.Integrity }}" />
+{{ else }}
+	{{/* Fallback if moved to static later */}}
+	<link rel="stylesheet" href="{{ relURL "css/carousel.css" }}" />
+{{ end }}
+{{ $carousel := resources.Get "js/carousel.js" | minify | fingerprint }}
+<script defer src="{{ $carousel.RelPermalink }}" integrity="{{ $carousel.Data.Integrity }}"></script>

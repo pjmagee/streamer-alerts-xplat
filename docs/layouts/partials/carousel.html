@@ -1,0 +1,19 @@
+{{ $slides := .Site.Params.carousel }}
+{{ if gt (len $slides) 0 }}
+<section id="carousel" class="sa-carousel">
+  <div class="carousel">
+    <div class="carousel-track">
+      {{ range $slides }}
+        <div class="carousel-slide">
+          <figure>
+            <img src="/{{ .file }}" alt="{{ .alt }}" loading="lazy" />
+            <figcaption>{{ .title }}</figcaption>
+          </figure>
+        </div>
+      {{ end }}
+    </div>
+    <button class="carousel-button prev" aria-label="Previous slide">&#8249;</button>
+    <button class="carousel-button next" aria-label="Next slide">&#8250;</button>
+  </div>
+</section>
+{{ end }}

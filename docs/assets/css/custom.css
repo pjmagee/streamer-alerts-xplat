@@ -1,0 +1,63 @@
+:root {
+  /* Adjust base max width */
+  --sa-content-max-width: 980px;
+}
+
+/* Widen main content area on large screens while keeping readable line length */
+.post.single-root .post-content, .post.single-root .post-header {
+  max-width: var(--sa-content-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.2rem;
+  padding-right: 1.2rem;
+}
+
+@media (min-width: 1400px) {
+  :root { --sa-content-max-width: 1120px; }
+}
+
+/* Improve table responsiveness */
+.post.single-root table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.post.single-root table th,
+.post.single-root table td {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #ddd;
+}
+.post.single-root table th { background: #f7f7f7; font-weight: 600; }
+
+/* Lead shortcode styling (if not provided by theme) */
+.lead { font-size: 1.15rem; line-height: 1.5; margin-bottom: 1.25rem; }
+
+/* Add subtle spacing below subtitle */
+.post-subtitle { margin-top: -0.5rem; margin-bottom: 1.1rem; font-weight: 400; opacity: 0.85; }
+
+/* Download CTA */
+.download-cta { margin: 2.5rem 0 3rem; text-align: center; }
+.download-button {
+  display: inline-block;
+  background: linear-gradient(135deg,#2563eb,#1d4ed8);
+  color: #fff;
+  padding: 0.9rem 1.6rem;
+  border-radius: 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 10px -2px rgba(0,0,0,0.25);
+  transition: background .25s, transform .15s, box-shadow .25s;
+}
+.download-button:hover { background: linear-gradient(135deg,#1d4ed8,#1e40af); transform: translateY(-2px); }
+.download-button:active { transform: translateY(0); box-shadow: 0 2px 6px -1px rgba(0,0,0,0.25); }
+.download-hint { font-size: 0.8rem; margin-top: 0.6rem; opacity: 0.75; }
+
+/* Screenshot grid */
+.screenshots { margin: 3rem 0 2rem; }
+.screenshots h2 { text-align: center; margin-bottom: 1.8rem; }
+.screenshot-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 1.2rem; }
+.screenshot-item { text-align: center; }
+.screenshot-frame { background: #111; padding: .6rem; border-radius: 8px; box-shadow: 0 4px 12px -3px rgba(0,0,0,.35); }
+.screenshot-frame img { max-width: 100%; border-radius: 4px; display: block; }
+.screenshot-item figcaption { font-size: .8rem; margin-top: .5rem; opacity: .75; }
