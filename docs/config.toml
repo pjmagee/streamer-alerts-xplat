@@ -1,10 +1,13 @@
 baseURL = "https://sax.magaoidh.pro/"
 languageCode = "en-gb"
 title = "Streamer Alerts XPlat"
-theme = "hugo-scroll"
 paginate = 5
 enableRobotsTXT = true
 copyright = "© 2025 Streamer Alerts"
+
+[module]
+  [[module.imports]]
+    path = "github.com/janraasch/hugo-scroll"
 
 [params]
   description = "Cross-platform live stream monitoring & alerts"
