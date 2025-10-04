@@ -73,4 +73,11 @@ export default [
             'no-console': 'off'
         }
     }
+    ,
+    {
+        files: ["scripts/verify-browser.ts"],
+        rules: {
+            'no-console': 'off'
+        }
+    }
 ];
