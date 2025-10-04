@@ -30,6 +30,58 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache Puppeteer browsers (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            puppeteer-${{ runner.os }}-
+
+      - name: Cache Puppeteer browsers (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            puppeteer-${{ runner.os }}-
+
+      - name: Determine Windows Puppeteer cache path
+        if: runner.os == 'Windows'
+        id: win_cache
+        shell: bash
+        run: |
+          echo "cache_dir=$LOCALAPPDATA/puppeteer" >> $GITHUB_OUTPUT
+
+      - name: Cache Puppeteer browsers (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.win_cache.outputs.cache_dir }}
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            puppeteer-${{ runner.os }}-
+
+      - name: Ensure Chromium installed for tests (Linux)
+        if: runner.os == 'Linux'
+        run: npx @puppeteer/browsers install chromium@latest
+        env:
+          PUPPETEER_CACHE_DIR: ~/.cache/puppeteer
+
+      - name: Ensure Chromium installed for tests (macOS)
+        if: runner.os == 'macOS'
+        run: npx @puppeteer/browsers install chromium@latest
+        env:
+          PUPPETEER_CACHE_DIR: ~/Library/Caches/puppeteer
+
+      - name: Ensure Chromium installed for tests (Windows)
+        if: runner.os == 'Windows'
+        run: npx @puppeteer/browsers install chromium@latest
+        env:
+          PUPPETEER_CACHE_DIR: ${{ steps.win_cache.outputs.cache_dir }}
+
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -41,6 +93,9 @@ jobs:
 
       - name: Run tests
         run: npm test
+        env:
+          CI: true
+          AUTO_DOWNLOAD_BROWSER: false
 
       - name: Test packaging (Electron Forge lifecycle step 1)
         run: npm run package
