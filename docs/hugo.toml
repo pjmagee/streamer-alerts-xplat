@@ -24,6 +24,9 @@ enableEmoji = true
   description = "Cross-platform live stream monitoring & alerts"
 
   title = "Streamer Alerts XPlat"
+  hero_headline = "Streamer Alerts XPlat"
+  hero_subheadline = "Cross‑platform desktop pop‑up alerts for Twitch, YouTube & Kick — no per‑platform setup. Click once, you're watching."
+  hero_meta = "Real browser scraping · Multi‑platform · Low noise alerts"
 
   language_menu = false
 

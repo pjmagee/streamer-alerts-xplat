@@ -95,6 +95,12 @@ out/
 chromium/
 chrome/
 
+# Hugo build output (do not commit generated site)
+docs/public/
+public/
+resources/_gen/
+asset-cache/
+
 # Configuration files with sensitive data
 config/config.local.json
 config/config.prod.json

@@ -1,0 +1,18 @@
+{{/* Override header to wrap headline in hero-toast card */}}
+<header id="site-head" class="withCenteredImage">
+  <div class="vertical">
+    <div class="hero-toast" aria-live="polite">
+      <div class="toast-icon" aria-hidden="true">
+        <img width="48" height="48" src="favicon.ico" />
+      </div>
+      <div class="toast-body">
+  {{ with site.Params.hero_headline }}<h1 class="blog-title">{{ . | safeHTML }}</h1>{{ end }}
+  {{ with site.Params.hero_subheadline }}<h2 class="blog-description">{{ . | safeHTML }}</h2>{{ end }}
+        <div class="toast-actions">
+          <a class="toast-download-btn" href="https://github.com/pjmagee/streamer-alerts-xplat/releases/latest" rel="noopener" target="_blank">Download Latest<span aria-hidden="true">→</span></a>
+        </div>
+  {{ with site.Params.hero_meta }}<small class="meta-line">{{ . | safeHTML }}</small>{{ end }}
+      </div>
+    </div>
+  </div>
+</header>
