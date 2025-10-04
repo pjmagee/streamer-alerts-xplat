@@ -11,7 +11,8 @@ export default [
             "out/**", 
             "dist/**",
             "node_modules/**",
-            "coverage/**"
+            "coverage/**",
+            "chromium/**" // downloaded browser binaries
         ]
     },
     
@@ -62,6 +63,14 @@ export default [
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
             // Turn off no-undef for TypeScript files since TypeScript handles this
             'no-undef': 'off'
+        }
+    }
+    ,
+    // File specific override: allow console in renderer logger
+    {
+        files: ["src/utils/renderer-logger.ts"],
+        rules: {
+            'no-console': 'off'
         }
     }
 ];
