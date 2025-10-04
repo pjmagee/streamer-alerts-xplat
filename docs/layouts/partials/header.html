@@ -1,9 +1,8 @@
-{{/* Override header to wrap headline in hero-toast card */}}
 <header id="site-head" class="withCenteredImage">
   <div class="vertical">
     <div class="hero-toast" aria-live="polite">
       <div class="toast-icon" aria-hidden="true">
-        <img width="48" height="48" src="favicon.ico" />
+        <img width="48" height="48" src="{{ .Site.Params.logo.file }}" />
       </div>
       <div class="toast-body">
   {{ with site.Params.hero_headline }}<h1 class="blog-title">{{ . | safeHTML }}</h1>{{ end }}

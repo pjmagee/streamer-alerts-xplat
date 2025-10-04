@@ -13,85 +13,87 @@ theme = "hugo-scroll"
 enableEmoji = true
 
 [pagination]
-  pagerSize = 5
-
+pagerSize = 5
 
 
 [params]
+favicon = "/favicon.ico"
 
-  favicon = "/favicon.ico"
+description = "Cross-platform live stream monitoring & alerts"
 
-  description = "Cross-platform live stream monitoring & alerts"
+title = "Streamer Alerts XPlat"
+hero_headline = "Streamer Alerts XPlat"
+hero_subheadline = "Cross‑platform desktop pop‑up alerts for Twitch, YouTube & Kick — no per‑platform setup. Click once, you're watching."
+hero_meta = "Real browser scraping · Multi‑platform · Low noise alerts"
 
-  title = "Streamer Alerts XPlat"
-  hero_headline = "Streamer Alerts XPlat"
-  hero_subheadline = "Cross‑platform desktop pop‑up alerts for Twitch, YouTube & Kick — no per‑platform setup. Click once, you're watching."
-  hero_meta = "Real browser scraping · Multi‑platform · Low noise alerts"
+language_menu = false
 
-  language_menu = false
+copyright = "Copyright © <a href='https://github.com/pjmagee'>Patrick Magee</a>."
 
-  copyright = "Copyright © <a href='https://github.com/pjmagee'>Patrick Magee</a>."
+author = "Patrick Magee"
+customCSS = ["/css/custom.css"]
+download_url = "https://github.com/pjmagee/streamer-alerts-xplat/releases/latest"
 
-  author = "Patrick Magee"
-  customCSS = ["/css/custom.css"]
-  download_url = "https://github.com/pjmagee/streamer-alerts-xplat/releases/latest"
+[params.meta]
+keywords = "twitch notifications, youtube notifications, kick notifications, streamer notifications, streamer alerts, channel notifications, channel alerts"
 
-  [params.meta]
-  keywords = "twitch notifications, youtube notifications, kick notifications, streamer notifications, streamer alerts, channel notifications, channel alerts"
+[params.footer]
+showContactIcons = true
 
-  [params.footer]   
-  showContactIcons = true
+[params.logo]
+title = "Logo"
+file = "images/favicon.ico"
 
-  # List of screenshot objects: title + file (relative to /images)
-  [[params.screenshots]]
-    title = "Main Dashboard"
-    file = "images/screenshot-dashboard.png"
+# List of screenshot objects: title + file (relative to /images)
+[[params.screenshots]]
+title = "Main Dashboard"
+file = "images/screenshot-dashboard.png"
 
-  [[params.screenshots]]
-    title = "Notifications"
-    file = "images/screenshot-notification.png"
+[[params.screenshots]]
+title = "Notifications"
+file = "images/screenshot-notification.png"
 
-  [[params.screenshots]]
-    title = "Settings"
-    file = "images/screenshot-settings.png"
+[[params.screenshots]]
+title = "Settings"
+file = "images/screenshot-settings.png"
 
-  # Carousel slides (displayed near top of page)
-  [[params.carousel]]
-    title = "Accounts View"
-    file = "images/carousel-accounts.png"
-    alt = "Accounts view screenshot"
+# Carousel slides (displayed near top of page)
+[[params.carousel]]
+title = "Accounts View"
+file = "images/carousel-accounts.png"
+alt = "Accounts view screenshot"
 
-  [[params.carousel]]
-    title = "Notification Popup"
-    file = "images/carousel-notification.png"
-    alt = "Notification popup screenshot"
-  
-  [[params.carousel]]
-    title = "Browser automation"
-    file = "images/carousel-browser.png"
-    alt = "Browser automation screenshot"
+[[params.carousel]]
+title = "Notification Popup"
+file = "images/carousel-notification.png"
+alt = "Notification popup screenshot"
 
-  [[params.carousel]]
-    title = "Settings Panel"
-    file = "images/carousel-settings.png"
-    alt = "Settings panel screenshot"
+[[params.carousel]]
+title = "Browser automation"
+file = "images/carousel-browser.png"
+alt = "Browser automation screenshot"
 
-  [[params.contacts]]
-  label = "email"
-  value = "patrick.magee@live.co.uk"
-  url = "mailto:patrick.magee@live.co.uk"
-  icon = "fa fa-envelope"
+[[params.carousel]]
+title = "Settings Panel"
+file = "images/carousel-settings.png"
+alt = "Settings panel screenshot"
+
+[[params.contacts]]
+label = "email"
+value = "patrick.magee@live.co.uk"
+url = "mailto:patrick.magee@live.co.uk"
+icon = "fa fa-envelope"
 
 [markup]
-  [markup.goldmark.renderer]
-    unsafe = true
+[markup.goldmark.renderer]
+unsafe = true
 
 [outputs]
-  home = ["HTML", "RSS", "JSON"]
+home = ["HTML", "RSS", "JSON"]
 
 
 [languages]
-  [languages.en]
-    weight = 10
-    languageName = "English"
-    contentDir = "content/en"
+[languages.en]
+weight = 10
+languageName = "English"
+contentDir = "content/en"
