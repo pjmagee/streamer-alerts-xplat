@@ -1,53 +1,33 @@
 {{ define "main" }}
-{{/* Custom home layout overriding theme to eliminate duplicate/empty sections and use hero partial */}}
-{{ $home := .GetPage "./homepage" }}
-{{ if hugo.IsMultihost }}
-  {{ $home = .Site.GetPage "/homepage" }}
-{{ end }}
-{{ $sections := $home.Resources.ByType "page" }}
-{{/* Exclude drafts when not building drafts */}}
-{{ $sections = cond .Site.BuildDrafts $sections (where $sections "Draft" "==" false) }}
-{{/* Honor detailed_page_homepage_content=false to hide */}}
-{{ $sections = where $sections "Params.detailed_page_homepage_content" "ne" false }}
-{{/* Drop pages with no title or blank title */}}
-{{ $sections = where $sections "Title" "ne" "" }}
-
-{{/* Header already rendered by baseof.html; avoid duplicate hero */}}
-
-{{/* Sticky nav (left) */}}
-<main class="content" role="main">
-  <div class='fixed-nav'>
-    {{ if eq .Params.nav_to_top_weight "first" }}
-      {{ $topLabel := .Params.nav_to_top_title | default "Start" }}
-      <a class='fn-item' item_index='0' href='./#site-head'>{{ $topLabel | safeHTML }}</a>
-    {{ end }}
-    {{ $lastIndex := 0 }}
-    {{ range $i, $p := $sections }}
-      {{ $navTitle := $p.Title }}
-      {{ with $p.Params.navigation_menu_title }}{{ $navTitle = . }}{{ end }}
-      <a class='fn-item' item_index='{{ add $i 1 }}' href='#{{ anchorize $navTitle }}'>{{ $navTitle | safeHTML }}</a>
-      {{ $lastIndex = $i }}
-    {{ end }}
-    {{ if eq .Params.nav_to_top_weight "last" }}
-      {{ $topLabel := .Params.nav_to_top_title | default "Start" }}
-      <a class='fn-item' item_index='{{ add $lastIndex 2 }}' href='./#site-head'>{{ $topLabel | safeHTML }}</a>
-    {{ end }}
-  </div>
-
-  {{ range $i, $p := $sections }}
-    {{ $sectionTitle := $p.Title }}
-    {{ with $p.Params.navigation_menu_title }}{{ $sectionTitle = . }}{{ end }}
-    <div class='post-holder{{ if and (ne $.Site.Params.invertSectionColors true) (not (modBool $i 2)) }} dark{{ else if and (eq $.Site.Params.invertSectionColors true) (modBool $i 2) }} dark{{ end }}'>
-      <article id='{{ anchorize $sectionTitle }}' class='post {{ if eq $i 0 }}first{{ end }} {{ if eq (add $i 1) (len $sections) }}last{{ end }}'>
-        <header class="post-header">
-          <h2 class="post-title">{{ $sectionTitle | emojify | safeHTML }}</h2>
-        </header>
-        <section class="post-content">
-          {{ $p.Content }}
-        </section>
-      </article>
-      <div class='post-after{{ if and (ne $.Site.Params.invertSectionColors true) (modBool $i 2) }} light{{ else if and (eq $.Site.Params.invertSectionColors true) (not (modBool $i 2)) }} light{{ end }}'></div>
-    </div>
+  {{/* Minimal custom index to ensure only one global header comes from baseof and to list homepage sections */}}
+  {{ $headless := .GetPage "./homepage" }}
+  {{ if hugo.IsMultihost }}
+    {{ $headless = .Site.GetPage "/homepage" }}
   {{ end }}
-</main>
+  {{ if not $headless }}
+    <main class="content" role="main"><p>Homepage bundle not found.</p></main>
+  {{ else }}
+    {{ $sections := $headless.Resources.ByType "page" }}
+    {{ $sections = cond .Site.BuildDrafts $sections (where $sections "Draft" "==" false) }}
+    {{ $sections = where $sections "Content" "ne" "" }}
+    <main class="content" role="main">
+      {{ range $i, $p := $sections }}
+        {{ $title := $p.Title }}
+        {{ if $title }}
+          <div class='post-holder{{ if and (ne $.Site.Params.invertSectionColors true) (not (modBool $i 2)) }} dark{{ else if and (eq $.Site.Params.invertSectionColors true) (modBool $i 2) }} dark{{ end }}'>
+            {{ $isTestimonials := eq (lower $title) "testimonials" }}
+            <article id='{{ anchorize $title }}' class='post {{ if $isTestimonials }}post-testimonials{{ end }} {{ if eq $i 0 }}first{{ end }} {{ if eq (add $i 1) (len $sections) }}last{{ end }}'>
+              <header class="post-header">
+                <h2 class="post-title">{{ $title | emojify | safeHTML }}</h2>
+              </header>
+              <section class="post-content">
+                {{ $p.Content }}
+              </section>
+            </article>
+            <div class='post-after{{ if and (ne $.Site.Params.invertSectionColors true) (modBool $i 2) }} light{{ else if and (eq $.Site.Params.invertSectionColors true) (not (modBool $i 2)) }} light{{ end }}'></div>
+          </div>
+        {{ end }}
+      {{ end }}
+    </main>
+  {{ end }}
 {{ end }}

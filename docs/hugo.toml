@@ -31,7 +31,7 @@ language_menu = false
 copyright = "Copyright © <a href='https://github.com/pjmagee'>Patrick Magee</a>."
 
 author = "Patrick Magee"
-customCSS = ["/css/custom.css"]
+customCSS = ["/css/custom.css", "/css/carousel.css"]
 download_url = "https://github.com/pjmagee/streamer-alerts-xplat/releases/latest"
 
 [params.meta]
@@ -89,7 +89,7 @@ icon = "fa fa-envelope"
 unsafe = true
 
 [outputs]
-home = ["HTML", "RSS", "JSON"]
+home = ["HTML", "RSS"]
 
 
 [languages]
