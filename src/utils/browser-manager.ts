@@ -29,7 +29,11 @@ export interface BrowserUninstallResult {
 function getDefaultCacheDir(): string {
   // Highest priority: explicit environment variable
   if (process.env.PUPPETEER_CACHE_DIR && process.env.PUPPETEER_CACHE_DIR.trim()) {
-    return process.env.PUPPETEER_CACHE_DIR.trim();
+    const raw = process.env.PUPPETEER_CACHE_DIR.trim();
+    if (raw.startsWith('~')) {
+      return path.join(os.homedir(), raw.slice(1));
+    }
+    return raw;
   }
 
   const homeDir = os.homedir();
