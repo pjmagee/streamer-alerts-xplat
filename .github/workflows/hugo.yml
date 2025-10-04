@@ -54,8 +54,6 @@ jobs:
           HUGO_ENVIRONMENT: production
         run: |
           cd docs
-          hugo mod tidy
-          hugo mod vendor
           hugo \
             --minify \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
