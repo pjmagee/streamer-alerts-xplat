@@ -25,3 +25,46 @@ test('YouTube scraping returns proper structure', async () => {
     await scrapingService.cleanup();
   }
 });
+
+
+test('YouTube scraping returns 24/7 online', async () => {
+  const mockConfig = new MockConfigService();
+  const scrapingService = new ScrapingService(mockConfig);
+  try {
+    const result = await scrapingService.checkYouTubeStream('@FobosPlanet');
+    
+    // Verify the structure
+    assert.strictEqual(typeof result.isLive, 'boolean');
+    assert.strictEqual(typeof result.title, 'string');
+    
+    // The result should have these properties
+    assert.ok('isLive' in result);
+    assert.ok('title' in result);
+    
+    assert.strictEqual(result.isLive, true);
+     
+  } finally {
+    await scrapingService.cleanup();
+  }
+});
+
+test('YouTube scraping returns false for offline', async () => {
+  const mockConfig = new MockConfigService();
+  const scrapingService = new ScrapingService(mockConfig);
+  try {
+    const result = await scrapingService.checkYouTubeStream('@AsmonTV');
+    
+    // Verify the structure
+    assert.strictEqual(typeof result.isLive, 'boolean');
+    assert.strictEqual(typeof result.title, 'string');
+    
+    // The result should have these properties
+    assert.ok('isLive' in result);
+    assert.ok('title' in result);
+    
+    assert.strictEqual(result.isLive, false);
+     
+  } finally {
+    await scrapingService.cleanup();
+  }
+});

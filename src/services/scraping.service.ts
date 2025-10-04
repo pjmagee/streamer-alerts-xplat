@@ -104,10 +104,18 @@ export class ScrapingService {
   }
 
   public async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string }> {
-
+    // More robust selectors & logic based on documented Twitch structure
+    // From development instructions: A div whose class contains 'tw-channel-status-text-indicator'
+    // containing a nested span whose class contains 'CoreText' and whose textContent is exactly 'LIVE'.
+    // Additionally, validate presence of the channel video player container to reduce false positives.
     const titleSelector = 'p[data-a-target="stream-title"][class*="CoreText"]';
-    const liveIndicatorSelector = 'span[class*="CoreText"]';
-
+    const liveContainerSelector = 'div[class*="tw-channel-status-text-indicator"]';
+    const liveSpanSelector = `${liveContainerSelector} span[class*="CoreText"]`;
+    const playerPresenceSelectors = [
+      'div[data-a-player-type]', // generic player wrapper attribute Twitch uses
+      'video', // fallback: presence of a video element
+      'div.tw-player' // legacy / variant player container class
+    ];
 
     try {
       const page = await this.getTwitchPage();
@@ -116,25 +124,47 @@ export class ScrapingService {
       await page.waitForSelector('body', { visible: true });
 
       let isLive = false;
-
       try {
-        await page.waitForSelector(liveIndicatorSelector, {visible: true, timeout: 30000 });
-      } catch (timeoutError) {
-        logger.error(`Timeout waiting for Twitch live indicators for ${username}:`, timeoutError);        
-        // Continue to evaluate even if we timeout - elements might still be there
+        // Wait specifically for the container; shorter timeout to fail fast.
+        await page.waitForSelector(liveContainerSelector, { visible: true, timeout: 15000 });
+      } catch {
+        // If container not found quickly, we'll still attempt evaluation for resiliency.
       }
 
-      // Always try to evaluate for live status, regardless of timeout
-      isLive = await page.evaluate((selector) => {
-        const elements = document.querySelectorAll(selector);
-        for (const element of elements) {
-          const text = element.textContent || '';
-          if (text === 'LIVE') {
-            return true;
-          }
+      // Evaluate in page for strict live condition and supporting signals.
+      const liveEvalResult = await page.evaluate((liveSpanSel, playerSelectors) => {
+        const spans = Array.from(document.querySelectorAll(liveSpanSel));
+        const target = spans.find(sp => (sp.textContent || '').trim() === 'LIVE');
+
+        if (!target) {
+          return { live: false, reason: 'No exact LIVE span match' };
         }
-        return false;
-      }, liveIndicatorSelector);
+
+        // Ensure the parent container has no additional nested conflicting elements (defensive check)
+        const container = target.closest('div');
+        if (!container) {
+          return { live: false, reason: 'No container for LIVE span' };
+        }
+
+        // Basic sanity: container text should be exactly LIVE (no extra tokens)
+        const normalizedContainerText = (container.textContent || '').trim();
+        if (normalizedContainerText !== 'LIVE') {
+          return { live: false, reason: 'Container text not exactly LIVE' };
+        }
+
+        // Player presence heuristics: confirm at least one plausible player element exists
+        const playerPresent = playerSelectors.some(sel => document.querySelector(sel));
+        if (!playerPresent) {
+          return { live: false, reason: 'No player elements present' };
+        }
+
+        return { live: true, reason: 'LIVE span within indicator container and player present' };
+      }, liveSpanSelector, playerPresenceSelectors);
+
+      isLive = liveEvalResult.live;
+      if (!isLive) {
+        logger.debug(`Twitch live evaluation for ${username} negative: ${liveEvalResult.reason}`);
+      }
 
       let title = '';
       if (isLive) {
@@ -289,7 +319,7 @@ export class ScrapingService {
     try {
       const page = await this.getKickPage();
 
-      await page.goto(`https://kick.com/${username}`, { waitUntil: 'networkidle0' });
+      await page.goto(`https://kick.com/${username}`, { waitUntil: 'load' });
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Check for LIVE indicator

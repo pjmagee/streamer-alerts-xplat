@@ -25,3 +25,24 @@ test('Twitch scraping returns proper structure', async () => {
     await scrapingService.cleanup();
   }
 });
+
+test('Twitch scraping returns offline channel', async () => {
+  const mockConfig = new MockConfigService();
+  const scrapingService = new ScrapingService(mockConfig);
+  try {
+    const result = await scrapingService.checkTwitchStream('SaltySadism');
+    
+    // Verify the structure
+    assert.strictEqual(typeof result.isLive, 'boolean');
+    assert.strictEqual(typeof result.title, 'string');
+    
+    // The result should have these properties
+    assert.ok('isLive' in result);
+    assert.ok('title' in result);
+    
+    assert.strictEqual(result.isLive, false);
+    
+  } finally {
+    await scrapingService.cleanup();
+  }
+});
