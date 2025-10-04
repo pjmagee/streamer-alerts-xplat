@@ -27,9 +27,14 @@ export interface BrowserUninstallResult {
  * Get the default Puppeteer cache directory to ensure consistency
  */
 function getDefaultCacheDir(): string {
+  // Highest priority: explicit environment variable
+  if (process.env.PUPPETEER_CACHE_DIR && process.env.PUPPETEER_CACHE_DIR.trim()) {
+    return process.env.PUPPETEER_CACHE_DIR.trim();
+  }
+
   const homeDir = os.homedir();
   const platform = os.platform();
-  
+
   switch (platform) {
     case 'win32':
       return path.join(process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), 'puppeteer');
@@ -196,31 +201,21 @@ export async function findFirstAvailableBrowser(cacheDir?: string): Promise<Down
 
   if (browsers.length > 0) return browsers[0];
 
-  // 2. Fallback: look for local project-level install (e.g., chromium/<platform-build>/...)
-  try {
-    const projectRoot = process.cwd();
-    const candidates: string[] = [];
-    const platform = os.platform();
-    if (platform === 'darwin') {
-      candidates.push(path.join(projectRoot, 'chromium')); // search recursively below
-    } else if (platform === 'linux') {
-      candidates.push(path.join(projectRoot, 'chromium'));
-    } else if (platform === 'win32') {
-      candidates.push(path.join(projectRoot, 'chromium'));
-    }
-
-    for (const base of candidates) {
-      if (!fs.existsSync(base)) continue;
-      // Walk one level deep to find executable-like paths
-      const dirs = fs.readdirSync(base);
-      for (const dir of dirs) {
-        const full = path.join(base, dir);
-        if (fs.statSync(full).isDirectory()) {
-          // Heuristic executable locations
+  // 2. Optional fallback: project-local chromium directory (must opt-in)
+  if (process.env.ALLOW_PROJECT_CHROMIUM === 'true') {
+    try {
+      const projectRoot = process.cwd();
+      const chromiumRoot = path.join(projectRoot, 'chromium');
+      if (fs.existsSync(chromiumRoot)) {
+        const platform = os.platform();
+        const dirs = fs.readdirSync(chromiumRoot);
+        for (const dir of dirs) {
+          const full = path.join(chromiumRoot, dir);
+          if (!fs.statSync(full).isDirectory()) continue;
           const possible: string[] = [];
           if (platform === 'darwin') {
             possible.push(path.join(full, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'));
-            possible.push(path.join(full, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chrome')); // alternative
+            possible.push(path.join(full, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chrome'));
           } else if (platform === 'linux') {
             possible.push(path.join(full, 'chrome-linux', 'chrome'));
           } else if (platform === 'win32') {
@@ -228,7 +223,7 @@ export async function findFirstAvailableBrowser(cacheDir?: string): Promise<Down
           }
           for (const p of possible) {
             if (validateBrowserPath(p)) {
-              logger.info(`Detected project-local Chromium at ${p}`);
+              logger.info(`Detected project-local Chromium (opt-in) at ${p}`);
               return {
                 browser: Browser.CHROMIUM,
                 buildId: 'local-project',
@@ -240,9 +235,9 @@ export async function findFirstAvailableBrowser(cacheDir?: string): Promise<Down
           }
         }
       }
+    } catch (err) {
+      logger.warn('Local project Chromium detection failed:', err);
     }
-  } catch (err) {
-    logger.warn('Local project Chromium detection failed:', err);
   }
 
   return null;

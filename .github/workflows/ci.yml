@@ -66,19 +66,19 @@ jobs:
 
       - name: Ensure Chromium installed for tests (Linux)
         if: runner.os == 'Linux'
-        run: npx @puppeteer/browsers install chromium@latest
+        run: npx @puppeteer/browsers install chromium@latest --cache-dir ~/.cache/puppeteer
         env:
           PUPPETEER_CACHE_DIR: ~/.cache/puppeteer
 
       - name: Ensure Chromium installed for tests (macOS)
         if: runner.os == 'macOS'
-        run: npx @puppeteer/browsers install chromium@latest
+        run: npx @puppeteer/browsers install chromium@latest --cache-dir ~/Library/Caches/puppeteer
         env:
           PUPPETEER_CACHE_DIR: ~/Library/Caches/puppeteer
 
       - name: Ensure Chromium installed for tests (Windows)
         if: runner.os == 'Windows'
-        run: npx @puppeteer/browsers install chromium@latest
+        run: npx @puppeteer/browsers install chromium@latest --cache-dir ${{ steps.win_cache.outputs.cache_dir }}
         env:
           PUPPETEER_CACHE_DIR: ${{ steps.win_cache.outputs.cache_dir }}
 
@@ -96,6 +96,7 @@ jobs:
         env:
           CI: true
           AUTO_DOWNLOAD_BROWSER: false
+          ALLOW_PROJECT_CHROMIUM: false
 
       - name: Test packaging (Electron Forge lifecycle step 1)
         run: npm run package

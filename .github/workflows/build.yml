@@ -73,19 +73,19 @@ jobs:
 
       - name: Install Chromium (Linux)
         if: matrix.platform == 'linux'
-        run: npx @puppeteer/browsers install chromium@latest
+        run: npx @puppeteer/browsers install chromium@latest --cache-dir ~/.cache/puppeteer
         env:
           PUPPETEER_CACHE_DIR: ~/.cache/puppeteer
 
       - name: Install Chromium (macOS)
         if: matrix.platform == 'darwin'
-        run: npx @puppeteer/browsers install chromium@latest
+        run: npx @puppeteer/browsers install chromium@latest --cache-dir ~/Library/Caches/puppeteer
         env:
           PUPPETEER_CACHE_DIR: ~/Library/Caches/puppeteer
 
       - name: Install Chromium (Windows)
         if: matrix.platform == 'win32'
-        run: npx @puppeteer/browsers install chromium@latest
+        run: npx @puppeteer/browsers install chromium@latest --cache-dir ${{ steps.win_cache.outputs.cache_dir }}
         env:
           PUPPETEER_CACHE_DIR: ${{ steps.win_cache.outputs.cache_dir }}
 
@@ -98,6 +98,7 @@ jobs:
       - name: Run tests
         run: npm test
         env:
+          ALLOW_PROJECT_CHROMIUM: false
           CI: true
           AUTO_DOWNLOAD_BROWSER: false
         timeout-minutes: 15
