@@ -21,6 +21,32 @@ A desktop application for notifications when channels go live on YouTube, Twitch
 
 ## Auto-Updates
 
+## Documentation Site (Hugo + GitHub Pages)
+
+Documentation is generated with **Hugo** using the `hugo-scroll` theme and deployed from the `docs/` folder to GitHub Pages with a custom domain.
+
+Public site:
+
+```text
+https://sax.magaoidh.pro/
+```
+
+Source structure:
+
+- Hugo config: `docs/config.toml`
+- Landing page: `docs/content/_index.md`
+- Auto update guide: `docs/content/auto-update/_index.md`
+- Custom domain: `docs/CNAME`
+
+To run docs locally:
+
+```bash
+cd docs
+hugo server -D
+```
+
+Then visit <http://localhost:1313/> while editing content.
+
 This application supports automatic updates using GitHub releases:
 
 - Updates are checked every hour when the app is running in production
