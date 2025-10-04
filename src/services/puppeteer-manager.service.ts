@@ -73,10 +73,10 @@ export class PuppeteerManagerService {
         logger.info(`Using auto-detected browser: ${browserName} at ${browserPath}`);
       } else {
   logger.warn('No compatible browser found via cache or env/path heuristics');
-        // CI auto-install fallback: if running in CI or explicit env flag, attempt to download Chromium
-        const shouldAutoDownload = !!process.env.CI || process.env.AUTO_DOWNLOAD_BROWSER === 'true';
+        // Optional runtime auto-install fallback: ONLY if explicitly enabled
+        const shouldAutoDownload = process.env.AUTO_DOWNLOAD_BROWSER === 'true' || process.env.ALLOW_RUNTIME_BROWSER_DOWNLOAD === 'true';
         if (shouldAutoDownload) {
-          logger.info('Attempting automatic Chromium download for CI environment...');
+          logger.info('Attempting automatic Chromium download (explicit runtime fallback)...');
           try {
             const result = await installBrowser(DownloadBrowser.CHROMIUM, 'latest');
             if (result.success && result.browser) {
