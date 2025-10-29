@@ -12,7 +12,8 @@ export default [
             "dist/**",
             "node_modules/**",
             "coverage/**",
-            "chromium/**" // downloaded browser binaries
+            "chromium/**",
+            "chrome/**"
         ]
     },
     

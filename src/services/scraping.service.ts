@@ -1,11 +1,8 @@
-import logger from '../utils/logger';
-import { PuppeteerManagerService } from './puppeteer-manager.service';
-import { ConfigService } from './config.service';
-import { Browser, Page } from 'puppeteer-core';
+import logger from "../utils/logger";
+import { PuppeteerManagerService } from "./puppeteer-manager.service";
+import { ConfigService } from "./config.service";
+import { Browser, Page } from "puppeteer-core";
 
-/**
- * Interface for config services used by ScrapingService
- */
 export interface IScrapingConfigService {
   getSelectedBrowserPath(): string | null;
 }
@@ -14,21 +11,20 @@ export class ScrapingService {
   private browser: Browser | null = null;
   private puppeteerManager = PuppeteerManagerService.getInstance();
   private configService: IScrapingConfigService;
+  private twitchPage: Page | null = null;
+  private youtubePage: Page | null = null;
+  private kickPage: Page | null = null;
 
   constructor(configService?: IScrapingConfigService) {
     this.configService = configService || new ConfigService();
   }
 
-  // Persistent pages for each platform
-  private twitchPage: Page | null = null;
-  private youtubePage: Page | null = null;
-  private kickPage: Page | null = null;
-
   private async getBrowser(): Promise<Browser> {
     if (!this.browser) {
-      // Get browser from puppeteer manager with selected browser path
       const selectedBrowserPath = this.configService.getSelectedBrowserPath();
-      this.browser = await this.puppeteerManager.getPuppeteerBrowser(selectedBrowserPath);
+      this.browser = await this.puppeteerManager.getPuppeteerBrowser(
+        selectedBrowserPath
+      );
     }
     return this.browser;
   }
@@ -36,359 +32,190 @@ export class ScrapingService {
   private async createPage(): Promise<Page> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
-    
-    // Disable webdriver detection
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined,
-      });
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.setUserAgent({
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     });
-    
-    // Set realistic viewport
-    await page.setViewport({ width: 1920, height: 1080 });
-    
-    // Set realistic user agent and headers to avoid bot detection
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.setExtraHTTPHeaders({ 
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'DNT': '1',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-    });
-    
     return page;
   }
 
   private async getTwitchPage(): Promise<Page> {
-    if (!this.twitchPage || this.twitchPage.isClosed()) {
+    if (!this.twitchPage || this.twitchPage.isClosed())
       this.twitchPage = await this.createPage();
-    }
     return this.twitchPage;
   }
 
   private async getYouTubePage(): Promise<Page> {
-    if (!this.youtubePage || this.youtubePage.isClosed()) {
+    if (!this.youtubePage || this.youtubePage.isClosed())
       this.youtubePage = await this.createPage();
-    }
     return this.youtubePage;
   }
 
   private async getKickPage(): Promise<Page> {
-    if (!this.kickPage || this.kickPage.isClosed()) {
+    if (!this.kickPage || this.kickPage.isClosed())
       this.kickPage = await this.createPage();
-    }
     return this.kickPage;
   }
 
   private async resetTwitchPage(): Promise<void> {
-    if (this.twitchPage && !this.twitchPage.isClosed()) {
+    if (this.twitchPage && !this.twitchPage.isClosed())
       await this.twitchPage.close();
-    }
     this.twitchPage = null;
   }
 
   private async resetYouTubePage(): Promise<void> {
-    if (this.youtubePage && !this.youtubePage.isClosed()) {
+    if (this.youtubePage && !this.youtubePage.isClosed())
       await this.youtubePage.close();
-    }
     this.youtubePage = null;
   }
 
   private async resetKickPage(): Promise<void> {
-    if (this.kickPage && !this.kickPage.isClosed()) {
+    if (this.kickPage && !this.kickPage.isClosed())
       await this.kickPage.close();
-    }
     this.kickPage = null;
   }
 
-  public async checkTwitchStream(username: string): Promise<{ isLive: boolean; title: string }> {
-    // More robust selectors & logic based on documented Twitch structure
-    // From development instructions: A div whose class contains 'tw-channel-status-text-indicator'
-    // containing a nested span whose class contains 'CoreText' and whose textContent is exactly 'LIVE'.
-    // Additionally, validate presence of the channel video player container to reduce false positives.
-    const titleSelector = 'p[data-a-target="stream-title"][class*="CoreText"]';
-    const liveContainerSelector = 'div[class*="tw-channel-status-text-indicator"]';
-    const liveSpanSelector = `${liveContainerSelector} span[class*="CoreText"]`;
-    const playerPresenceSelectors = [
-      'div[data-a-player-type]', // generic player wrapper attribute Twitch uses
-      'video', // fallback: presence of a video element
-      'div.tw-player' // legacy / variant player container class
-    ];
-
+  public async checkTwitchStream(
+    channel: string
+  ): Promise<{ isLive: boolean; title: string }> {
     try {
       const page = await this.getTwitchPage();
-      await page.goto(`https://www.twitch.tv/${username}`, { waitUntil: 'load', timeout: 30000 });
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      await page.waitForSelector('body', { visible: true });
-
-      let isLive = false;
-      try {
-        // Wait specifically for the container; shorter timeout to fail fast.
-        await page.waitForSelector(liveContainerSelector, { visible: true, timeout: 15000 });
-      } catch {
-        // If container not found quickly, we'll still attempt evaluation for resiliency.
-      }
-
-      // Evaluate in page for strict live condition and supporting signals.
-      const liveEvalResult = await page.evaluate((liveSpanSel, playerSelectors) => {
-        const spans = Array.from(document.querySelectorAll(liveSpanSel));
-        const target = spans.find(sp => (sp.textContent || '').trim() === 'LIVE');
-
-        if (!target) {
-          return { live: false, reason: 'No exact LIVE span match' };
-        }
-
-        // Ensure the parent container has no additional nested conflicting elements (defensive check)
-        const container = target.closest('div');
-        if (!container) {
-          return { live: false, reason: 'No container for LIVE span' };
-        }
-
-        // Basic sanity: container text should be exactly LIVE (no extra tokens)
-        const normalizedContainerText = (container.textContent || '').trim();
-        if (normalizedContainerText !== 'LIVE') {
-          return { live: false, reason: 'Container text not exactly LIVE' };
-        }
-
-        // Player presence heuristics: confirm at least one plausible player element exists
-        const playerPresent = playerSelectors.some(sel => document.querySelector(sel));
-        if (!playerPresent) {
-          return { live: false, reason: 'No player elements present' };
-        }
-
-        return { live: true, reason: 'LIVE span within indicator container and player present' };
-      }, liveSpanSelector, playerPresenceSelectors);
-
-      isLive = liveEvalResult.live;
-      if (!isLive) {
-        logger.debug(`Twitch live evaluation for ${username} negative: ${liveEvalResult.reason}`);
-      }
-
-      let title = '';
-      if (isLive) {
-        try {
-          // Wait for and extract the stream title using ONLY your proven selector
-          await page.waitForSelector(titleSelector, {visible: true });
-
-          const titleElement = await page.$(titleSelector);
-          if (titleElement) {
-            title = await titleElement.evaluate((el: Element) => el.textContent?.trim() || '');
-          }
-
-          if (!title) {
-            logger.debug(`Could not find stream title for ${username} with your proven selector`);
-          }
-
-        } catch (error) {
-          logger.warn(`Could not get stream title for ${username}:`, error);
-        }
-      }
-
-      logger.debug(`Twitch check for ${username}: isLive=${isLive}, title="${title}"`);
-      return { isLive, title };
-
+      await page.goto(`https://www.twitch.tv/${channel.toLowerCase()}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
+      await new Promise((r) => setTimeout(r, 3000));
+      const result = await page.evaluate(() => {
+        const hasVideo = !!document.querySelector("video");
+        const liveBadge = Array.from(document.querySelectorAll("span, div"))
+          .map((n) => (n.textContent || "").trim().toUpperCase())
+          .includes("LIVE");
+        const titleEl = document.querySelector(
+          "h2[data-test-selector='stream-info-card-component__title'], h1"
+        );
+        const title = (titleEl?.textContent || "").trim();
+        return { isLive: hasVideo && liveBadge, title };
+      });
+      return {
+        isLive: result.isLive,
+        title: result.isLive ? result.title.slice(0, 140) : "",
+      };
     } catch (error) {
-      logger.error(`Error scraping Twitch stream for ${username}:`, error);
+      logger.error(`Error scraping Twitch stream for ${channel}:`, error);
       await this.resetTwitchPage();
-      return { isLive: false, title: '' };
+      return { isLive: false, title: "" };
     }
   }
 
-  public async checkYouTubeStream(channel: string): Promise<{ isLive: boolean; title: string }> {
+  // Simplified YouTube heuristic per user request.
+  public async checkYouTubeStream(
+    channel: string
+  ): Promise<{ isLive: boolean; title: string }> {
     try {
       const page = await this.getYouTubePage();
+      const handle = channel.startsWith("@") ? channel : `@${channel}`;
 
-      // Navigate to channel homepage
-      const baseUrl = channel.startsWith('UC')
-        ? `https://www.youtube.com/channel/${channel}`
-        : channel.startsWith('@')
-          ? `https://www.youtube.com/${channel}`
-          : `https://www.youtube.com/@${channel}`;
+      // Navigate directly to handle /live and rely on final URL pattern.
+      await page.goto(`https://www.youtube.com/${handle}/live`, {
+        waitUntil: "domcontentloaded",
+        timeout: 25000,
+      });
 
-      await page.goto(baseUrl, { waitUntil: 'load', timeout: 30000 });
-      await new Promise(resolve => setTimeout(resolve, 10000));
-
-      // Handle consent/cookie popup if present
+      // Attempt to auto-dismiss YouTube consent screen if present.
       try {
-        const consentTitle = await page.title();
-        if (/before you continue|consent/i.test(consentTitle)) {
-          await page.waitForSelector('button', { timeout: 5000 });
-          const buttons = await page.$$('button');
-          for (const button of buttons) {
-            const text = await button.evaluate((el: Element) => el.textContent);
-            if (text && /(accept all|i agree|agree|accept)/i.test(text.trim())) {
-              await button.click();
-              await new Promise(resolve => setTimeout(resolve, 3000));
-              break;
-            }
+        const dismissed = await page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button')) as HTMLButtonElement[];
+          const target = buttons.find(b => /reject all/i.test(b.textContent || ''));
+          if (target) {
+            target.click();
+            return true;
           }
-        }
-      } catch {
-        // Ignore consent popup errors
-      }
-
-      // Check for LIVE indicator
-      let isLive = false;
-
-      try {
-        // Wait for page content to be ready
-        await page.waitForSelector('#page-header, #channel-header, ytd-channel-renderer');
-
-        // Check for LIVE badge
-        isLive = await page.evaluate(() => {
-          const liveSelectors = [
-            'div[class*="live-badge"]',
-            'span[class*="live-badge"]',
-            '[class*="live-indicator"]'
-          ];
-
-          for (const selector of liveSelectors) {
-            const elements = document.querySelectorAll(selector);
-            for (const element of elements) {
-              const text = element.textContent || '';
-              if (text.toUpperCase().includes('LIVE')) {
-                return true;
-              }
-            }
-          }
-
-          // Also check for any text content that indicates live status
-          const allText = document.body.textContent || '';
-          return /\bLIVE\b/i.test(allText) &&
-            !/(offline|ended|scheduled)/i.test(allText);
+          return false;
         });
-
-      } catch (error) {
-        logger.debug(`Error checking YouTube live status for ${channel}:`, error);
-      }
-
-      let title = '';
-      if (isLive) {
-        try {
-          // Try to get the live stream title
-          const titleSelectors = [
-            'a#video-title',
-            'h1#video-title',
-            '[id="video-title"]'
-          ];
-
-          for (const selector of titleSelectors) {
-            try {
-              await page.waitForSelector(selector, { visible: true, timeout: 5000 });
-              const titleElement = await page.$(selector);
-              if (titleElement) {
-                title = await titleElement.evaluate((el: Element) => {
-                  return el.getAttribute('title') ||
-                    el.textContent?.trim() ||
-                    el.getAttribute('aria-label') || '';
-                });
-                if (title) {
-                  break;
-                }
-              }
-            } catch {
-              continue;
-            }
-          }
-
-          if (!title) {
-            logger.debug(`Could not find stream title for YouTube channel ${channel}`);
-          }
-
-        } catch (error) {
-          logger.warn(`Could not get YouTube stream title for ${channel}:`, error);
+        if (dismissed) {
+          await new Promise(r => setTimeout(r, 4000));
         }
+      } catch (consentErr) {
+        logger.debug(`Consent dismiss attempt failed for ${channel}: ${consentErr}`);
       }
 
-      logger.debug(`YouTube check for ${channel}: isLive=${isLive}, title="${title}"`);
-      return { isLive, title };
+      // Capture a diagnostic screenshot (best-effort; ignore failures)
+      try {
+        const ts = new Date().toISOString().replace(/[:.]/g, "-");
+        const safeHandle = handle.replace(/[^@a-zA-Z0-9_-]/g, "_");
+        await page.screenshot({
+          path: `logs/youtube-${safeHandle}-${ts}.png`,
+          fullPage: false,
+        });
+      } catch (shotErr) {
+        logger.debug(`YouTube screenshot failed for ${channel}: ${shotErr}`);
+      }
+
+      const result = await page.evaluate(() => {        
+        const canonicalLink = document.querySelector<HTMLLinkElement>("link[rel='canonical']");
+        const isLive = canonicalLink!.href.includes("https://www.youtube.com/watch?v=");
+        return { isLive, title: isLive ? document.title : "" };
+      });
+
+      return {
+        isLive: result.isLive,
+        title: result.isLive ? result.title.slice(0, 140) : "",
+      };
 
     } catch (error) {
       logger.error(`Error scraping YouTube stream for ${channel}:`, error);
       await this.resetYouTubePage();
-      return { isLive: false, title: '' };
+      return { isLive: false, title: "" };
     }
   }
 
-  public async checkKickStream(username: string): Promise<{ isLive: boolean; title: string }> {
-    const titleSelector = 'span[data-testid="livestream-title"]';
-    const liveIndicatorSelector = 'span';
-
+  public async checkKickStream(
+    username: string
+  ): Promise<{ isLive: boolean; title: string }> {
+    const titleSelector = "span[data-testid='livestream-title']";
     try {
       const page = await this.getKickPage();
-
-      await page.goto(`https://kick.com/${username}`, { waitUntil: 'domcontentloaded' });
-      await new Promise(resolve => setTimeout(resolve, 5000));
-
-      // Check for LIVE indicator
-      let isLive = false;
-      try {
-        await page.waitForSelector(liveIndicatorSelector, { visible: true, timeout: 10000 });
-      } catch {
-        // Continue if timeout occurs
-      }
-
-      // Evaluate for live status
-      isLive = await page.evaluate((selector) => {
-        const spans = Array.from(document.querySelectorAll(selector));
-        return spans.some(span => {
-          const text = span.textContent?.trim();
-          return text === 'LIVE' || 
-                 text === 'Live' ||
-                 (text && text.toUpperCase().includes('LIVE') && text.length <= 10);
-        });
-      }, liveIndicatorSelector);
-
-      let title = '';
-      
-      // Get stream title
-      try {
-        const titleElement = await page.$(titleSelector);
-        if (titleElement) {
-          title = await titleElement.evaluate((el: Element) => el.textContent?.trim() || '');
-        }
-      } catch (error) {
-        logger.warn('Could not get Kick stream title:', error);
-      }
-
-      // If we found a title, assume the stream is live (since title selector is livestream-specific)
-      if (!isLive && title && title.length > 0) {
-        isLive = true;
-      }
-
-      return { isLive, title };
+      await page.goto(`https://kick.com/${username}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
+      await new Promise((r) => setTimeout(r, 4000));
+      const result = await page.evaluate((tSel: string) => {
+        const titleEl = document.querySelector(tSel);
+        const rawTitle = (titleEl?.textContent || "").trim();
+        const hasVideo = !!document.querySelector("video");
+        const liveBadgeFound = Array.from(document.querySelectorAll("span"))
+          .map((s) => (s.textContent || "").trim().toUpperCase())
+          .includes("LIVE");
+        return { isLive: hasVideo && (liveBadgeFound || !!rawTitle), rawTitle };
+      }, titleSelector);
+      return {
+        isLive: result.isLive,
+        title: result.isLive ? result.rawTitle.slice(0, 140) : "",
+      };
     } catch (error) {
-      logger.error('Error scraping Kick stream:', error);
+      logger.error(`Error scraping Kick stream for ${username}:`, error);
       await this.resetKickPage();
-      return { isLive: false, title: '' };
+      return { isLive: false, title: "" };
     }
   }
 
   public async cleanup(): Promise<void> {
     try {
-      // Close persistent pages
-      if (this.twitchPage && !this.twitchPage.isClosed()) {
+      if (this.twitchPage && !this.twitchPage.isClosed())
         await this.twitchPage.close();
-        this.twitchPage = null;
-      }
-      if (this.youtubePage && !this.youtubePage.isClosed()) {
+      if (this.youtubePage && !this.youtubePage.isClosed())
         await this.youtubePage.close();
-        this.youtubePage = null;
-      }
-      if (this.kickPage && !this.kickPage.isClosed()) {
+      if (this.kickPage && !this.kickPage.isClosed())
         await this.kickPage.close();
-        this.kickPage = null;
-      }
-
-      // Close browser
-      if (this.browser) {
-        await this.browser.close();
-        this.browser = null;
-      }
-    } catch (error) {
-      logger.error('Error during ScrapingService cleanup:', error);
+      if (this.browser) await this.browser.close();
+    } catch (e) {
+      logger.warn("Error during ScrapingService cleanup:", e);
+    } finally {
+      this.twitchPage = null;
+      this.youtubePage = null;
+      this.kickPage = null;
+      this.browser = null;
     }
   }
 }

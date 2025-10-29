@@ -31,7 +31,7 @@ test('YouTube scraping returns 24/7 online', async () => {
   const mockConfig = new MockConfigService();
   const scrapingService = new ScrapingService(mockConfig);
   try {
-    const result = await scrapingService.checkYouTubeStream('@FobosPlanet');
+    const result = await scrapingService.checkYouTubeStream('@CBSNews');
     
     // Verify the structure
     assert.strictEqual(typeof result.isLive, 'boolean');
