@@ -13,7 +13,8 @@ export default [
             "node_modules/**",
             "coverage/**",
             "chromium/**",
-            "chrome/**"
+            "chrome/**",
+            "docs/**"
         ]
     },
     

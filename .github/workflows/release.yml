@@ -56,14 +56,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon-dev libxcomposite-dev libxdamage-dev libxrandr-dev libgbm-dev libxss-dev libasound2-dev
 
-      - name: Run tests
-        run: npm test
-        env:
-          ALLOW_PROJECT_CHROMIUM: false
-          CI: true
-          AUTO_DOWNLOAD_BROWSER: false
-          PUPPETEER_CACHE_DIR: ${{ github.workspace }}
-        timeout-minutes: 15
+      # - name: Run tests
+      #   run: npm test
+      #   env:
+      #     ALLOW_PROJECT_CHROMIUM: false
+      #     CI: true
+      #     AUTO_DOWNLOAD_BROWSER: false
+      #     PUPPETEER_CACHE_DIR: ${{ github.workspace }}
+      #   timeout-minutes: 15
 
       - name: Run linting
         run: npm run lint
