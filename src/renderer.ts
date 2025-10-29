@@ -20,6 +20,7 @@ class StreamerAlertsRenderer {
     await this.loadAccounts();
     await this.loadApiCredentials();
     await this.loadUserApiCredentials();
+    await this.loadAboutTab();
     
     // Load browsers before checking status
     await this.loadDownloadedBrowsersList();
@@ -1411,10 +1412,83 @@ class StreamerAlertsRenderer {
       activeTabContent.classList.add('active');
     }
 
+    // Lazy-load dependencies when About tab is first opened
+    if (tabName === 'about') {
+      const depsContainer = document.getElementById('dependenciesList');
+      if (depsContainer && depsContainer.getAttribute('data-loaded') !== 'true') {
+        this.populateDependencies();
+      }
+    }
+
     // Set the active class on the clicked tab button
     const activeTabButton = Array.from(tabButtons).find(button => (button as HTMLElement).dataset.tab === tabName);
     if (activeTabButton) {
       activeTabButton.classList.add('active');
+    }
+  }
+
+  async loadAboutTab(): Promise<void> {
+    try {
+      const versionSpan = document.getElementById('appVersion');
+      if (versionSpan) {
+        const version = await window.electronAPI.getAppVersion();
+        versionSpan.textContent = version;
+      }
+    } catch (error) {
+      logger.error('Failed to load app version:', error);
+      const versionSpan = document.getElementById('appVersion');
+      if (versionSpan) versionSpan.textContent = 'Unknown';
+    }
+  }
+
+  async populateDependencies(): Promise<void> {
+    const depsContainer = document.getElementById('dependenciesList');
+    if (!depsContainer) return;
+
+    try {
+      const deps = await window.electronAPI.getAppDependencies();
+      if (!deps || deps.length === 0) {
+        depsContainer.innerHTML = '<p>No dependencies found.</p>';
+        depsContainer.setAttribute('data-loaded', 'true');
+        return;
+      }
+
+      // Sort: prod first then dev, alphabetical within groups
+      deps.sort((a, b) => {
+        if (a.dev !== b.dev) return a.dev ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
+
+      const list = document.createElement('ul');
+      list.className = 'dependency-list';
+
+      deps.forEach(d => {
+        const li = document.createElement('li');
+        li.className = d.dev ? 'dep-item dev-dep' : 'dep-item prod-dep';
+        li.innerHTML = `
+          <span class="dep-name">${d.name}</span>
+          <span class="dep-version">${d.version}</span>
+          <a href="${d.homepage}" class="dep-link" data-url="${d.homepage}" title="Open ${d.name} homepage">🔗</a>
+          ${d.dev ? '<span class="dep-tag">dev</span>' : ''}
+        `;
+        // Use existing openExternal IPC for link clicks
+        const link = li.querySelector('.dep-link');
+        link?.addEventListener('click', (e) => {
+          e.preventDefault();
+          const url = (e.currentTarget as HTMLElement).getAttribute('data-url');
+          if (url) {
+            window.electronAPI.openExternal(url);
+          }
+        });
+        list.appendChild(li);
+      });
+
+      depsContainer.innerHTML = '';
+      depsContainer.appendChild(list);
+      depsContainer.setAttribute('data-loaded', 'true');
+    } catch (error) {
+      logger.error('Failed to load dependencies:', error);
+      depsContainer.innerHTML = '<p class="error">Failed to load dependencies.</p>';
     }
   }
 

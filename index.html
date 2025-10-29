@@ -24,6 +24,7 @@
                 <button class="tab-button" data-tab="api">🔑 API</button>
                 <button class="tab-button" data-tab="accounts">👥 Accounts</button>
                 <button class="tab-button" data-tab="data">💾 Data</button>
+                <button class="tab-button" data-tab="about">ℹ️ About</button>
             </nav>
 
             <!-- Settings Tab -->
@@ -398,6 +399,33 @@
                                     📁 Open Folder
                                 </button>
                                 <span class="setting-help">Access settings, credentials, and data files</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- About Tab -->
+            <div id="about-tab" class="tab-content">
+                <section class="about-section">
+                    <h2>ℹ️ About</h2>
+                    <p class="section-help">Application information & open source components.</p>
+                    <div class="about-meta">
+                        <div class="about-card">
+                            <h3>📛 Application</h3>
+                            <ul class="about-list">
+                                <li><strong>Name:</strong> Streamer Alerts</li>
+                                <li><strong>Version:</strong> <span id="appVersion">Loading...</span></li>
+                                <li><strong>Author:</strong> Patrick Magee</li>
+                                <li><strong>Repository:</strong> <a href="https://github.com/pjmagee/streamer-alerts-xplat" target="_blank" rel="noreferrer noopener" class="external-link">GitHub</a></li>
+                                <li><strong>License:</strong> MIT</li>
+                            </ul>
+                        </div>
+                        <div class="about-card">
+                            <h3>📦 Dependencies</h3>
+                            <p class="deps-help">Including production and development dependencies.</p>
+                            <div id="dependenciesList" class="dependencies-list">
+                                <p class="loading">Loading dependency list...</p>
                             </div>
                         </div>
                     </div>
