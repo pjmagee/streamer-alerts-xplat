@@ -1,7 +1,7 @@
 {
   "name": "streamer-alerts-xplat",
   "productName": "Streamer Alerts",
-  "version": "0.0.15",
+  "version": "0.1.0",
   "description": "A desktop app for streamer live notifications",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "lint": "eslint --ext .ts,.tsx .",
     "test": "tsx --test",
     "test:watch": "tsx --test --watch tests",
-  "verify:browser": "tsx scripts/verify-browser.ts",
+    "verify:browser": "tsx scripts/verify-browser.ts",
     "version:patch": "npm version patch",
     "version:minor": "npm version minor",
     "version:major": "npm version major",
