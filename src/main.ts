@@ -457,6 +457,28 @@ class StreamerAlertsApp {
     ipcMain.handle('config:getSmartChecking', () => this.configService.getSmartChecking());
     ipcMain.handle('config:setSmartChecking', (_, config) => this.configService.setSmartChecking(config));
     ipcMain.handle('config:updateSmartCheckingSetting', (_, key, value) => this.configService.updateSmartCheckingSetting(key, value));
+
+    // App/meta information
+    ipcMain.handle('app:getVersion', () => app.getVersion());
+    ipcMain.handle('app:getDependencies', () => {
+      try {
+        // Load package.json from app path (works in dev and packaged)
+        const packageJsonPath = path.join(app.getAppPath(), 'package.json');
+        const pkgRaw = fs.readFileSync(packageJsonPath, 'utf-8');
+        const pkg = JSON.parse(pkgRaw);
+        const deps: Record<string, string> = pkg.dependencies || {};
+        // Only include production/runtime dependencies per user request
+        return Object.entries(deps).map(([name, version]) => ({
+          name,
+          version,
+          dev: false,
+          homepage: `https://www.npmjs.com/package/${encodeURIComponent(name)}`
+        }));
+      } catch (error) {
+        logger.error('Failed to read dependencies list:', error);
+        return [];
+      }
+    });
   }
 
   private createTray(): void {
@@ -631,7 +653,8 @@ class StreamerAlertsApp {
         preload: path.join(__dirname, 'preload.js')
       },
       show: false,
-      autoHideMenuBar: true
+      autoHideMenuBar: true,
+      title: `Streamer Alerts v${app.getVersion()}`
     });
 
     // Handle renderer loading
@@ -642,6 +665,12 @@ class StreamerAlertsApp {
     }
 
     this.mainWindow.once('ready-to-show', () => {
+      // Ensure title includes version (redundant if set in constructor, but safe)
+      try {
+        this.mainWindow?.setTitle(`Streamer Alerts v${app.getVersion()}`);
+      } catch (e) {
+        logger.warn('Failed to set window title with version:', e);
+      }
       this.mainWindow?.show();
     });
 

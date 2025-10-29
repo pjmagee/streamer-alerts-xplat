@@ -64,6 +64,7 @@ To publish a new version:
 3. GitHub Actions will automatically build and publish the release for all platforms
 4. Make sure the release is published (not draft) for auto-updates to work
 
+
 ## Kick Authorization
 
 - Getting Started: <https://docs.kick.com/getting-started/kick-apps-setup>

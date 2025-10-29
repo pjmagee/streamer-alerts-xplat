@@ -125,6 +125,10 @@ export interface ElectronAPI {
   getAvailableBrowsers: () => Promise<AvailableBrowser[]>;
   getSelectedBrowserPath: () => Promise<string | null>;
   setSelectedBrowserPath: (path: string | null) => Promise<void>;
+
+  // App meta
+  getAppVersion: () => Promise<string>;
+  getAppDependencies: () => Promise<Array<{ name: string; version: string; dev: boolean; homepage: string }>>;
 }
 
 declare global {

@@ -24,6 +24,7 @@
                 <button class="tab-button" data-tab="api">🔑 API</button>
                 <button class="tab-button" data-tab="accounts">👥 Accounts</button>
                 <button class="tab-button" data-tab="data">💾 Data</button>
+                <button class="tab-button" data-tab="about">ℹ️ About</button>
             </nav>
 
             <!-- Settings Tab -->
@@ -399,6 +400,33 @@
                                 </button>
                                 <span class="setting-help">Access settings, credentials, and data files</span>
                             </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- About Tab -->
+            <div id="about-tab" class="tab-content">
+                <section class="about-section">
+                    <h2>ℹ️ About</h2>
+                    <p class="section-help">Version, author and open source libraries bundled with the application.</p>
+                    <div class="about-grid">
+                        <div class="about-card app-info">
+                            <h3>📛 Application</h3>
+                            <dl class="app-info-list">
+                                <div><dt>Name</dt><dd>Streamer Alerts</dd></div>
+                                <div><dt>Version</dt><dd><span id="appVersion">Loading...</span></dd></div>
+                                <div><dt>Author</dt><dd>Patrick Magee</dd></div>
+                                <div><dt>Repository</dt><dd><a href="https://github.com/pjmagee/streamer-alerts-xplat" target="_blank" rel="noreferrer noopener" class="external-link">GitHub</a></dd></div>
+                                <div><dt>License</dt><dd>MIT</dd></div>
+                            </dl>
+                        </div>
+                        <div class="about-card deps-card">
+                            <h3>📦 Dependencies</h3>
+                            <p class="section-help">Open source runtime libraries bundled with the app.</p>
+                            <ul id="dependenciesList" class="dependencies-list">
+                                <li class="loading">Loading...</li>
+                            </ul>
                         </div>
                     </div>
                 </section>

@@ -57,6 +57,10 @@ const electronAPI: ElectronAPI = {
   getAvailableBrowsers: () => ipcRenderer.invoke('browser:getAvailable'),
   getSelectedBrowserPath: () => ipcRenderer.invoke('config:getSelectedBrowserPath'),
   setSelectedBrowserPath: (path: string | null) => ipcRenderer.invoke('config:setSelectedBrowserPath', path),
+
+  // App meta
+  getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
+  getAppDependencies: () => ipcRenderer.invoke('app:getDependencies')
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

@@ -20,6 +20,7 @@ class StreamerAlertsRenderer {
     await this.loadAccounts();
     await this.loadApiCredentials();
     await this.loadUserApiCredentials();
+    await this.loadAboutTab();
     
     // Load browsers before checking status
     await this.loadDownloadedBrowsersList();
@@ -1411,10 +1412,68 @@ class StreamerAlertsRenderer {
       activeTabContent.classList.add('active');
     }
 
+    // Lazy-load dependencies when About tab is first opened (simple list)
+    if (tabName === 'about') {
+      const depsContainer = document.getElementById('dependenciesList');
+      if (depsContainer && depsContainer.getAttribute('data-loaded') !== 'true') {
+        this.populateDependencies();
+      }
+    }
+
     // Set the active class on the clicked tab button
     const activeTabButton = Array.from(tabButtons).find(button => (button as HTMLElement).dataset.tab === tabName);
     if (activeTabButton) {
       activeTabButton.classList.add('active');
+    }
+  }
+
+  async loadAboutTab(): Promise<void> {
+    try {
+      const versionSpan = document.getElementById('appVersion');
+      if (versionSpan) {
+        const version = await window.electronAPI.getAppVersion();
+        versionSpan.textContent = version;
+      }
+    } catch (error) {
+      logger.error('Failed to load app version:', error);
+      const versionSpan = document.getElementById('appVersion');
+      if (versionSpan) versionSpan.textContent = 'Unknown';
+    }
+  }
+
+  async populateDependencies(): Promise<void> {
+    const depsContainer = document.getElementById('dependenciesList');
+    if (!depsContainer) return;
+
+    try {
+      const deps = await window.electronAPI.getAppDependencies();
+      if (!deps || deps.length === 0) {
+        depsContainer.innerHTML = '<li>No dependencies found.</li>';
+        depsContainer.setAttribute('data-loaded', 'true');
+        return;
+      }
+
+      deps.sort((a, b) => a.name.localeCompare(b.name));
+
+      depsContainer.innerHTML = deps.map(d => {
+        const safeVersion = d.version || 'N/A';
+        const link = d.homepage ? `<a href="#" data-url="${d.homepage}" class="dep-link" title="Open ${d.name} homepage">${d.name}</a>` : d.name;
+        return `<li>${link} <span class="dep-version">${safeVersion}</span></li>`;
+      }).join('');
+
+      // Attach link handlers to open externally via IPC
+      depsContainer.querySelectorAll('.dep-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const url = (e.currentTarget as HTMLElement).getAttribute('data-url');
+          if (url) window.electronAPI.openExternal(url);
+        });
+      });
+
+      depsContainer.setAttribute('data-loaded', 'true');
+    } catch (error) {
+      logger.error('Failed to load dependencies:', error);
+      depsContainer.innerHTML = '<li class="error">Failed to load dependencies.</li>';
     }
   }
 
