@@ -93,7 +93,8 @@ const config: ForgeConfig = {
       prerelease: false,
       draft: false, // Must be false for auto-updates to work
       generateReleaseNotes: true,
-      authToken: process.env.GH_TOKEN
+      // Electron Forge expects GITHUB_TOKEN by default. Allow either.
+      authToken: process.env.GH_TOKEN || process.env.GITHUB_TOKEN
     })
   ]
 };

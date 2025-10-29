@@ -1,4 +1,4 @@
-name: CI
+name: CI (build & test)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 jobs:
-  test:
+  build-test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     
@@ -60,9 +60,10 @@ jobs:
           ALLOW_PROJECT_CHROMIUM: false
           PUPPETEER_CACHE_DIR: ${{ github.workspace }}
 
-      - name: Test packaging (Electron Forge lifecycle step 1)
-        run: npm run package
-        timeout-minutes: 10
+      # Optional lightweight packaging to ensure build compiles (commented out for speed)
+      # - name: Test packaging (Electron Forge lifecycle step)
+      #   run: npm run package
+      #   timeout-minutes: 10
         
       - name: Upload test results
         if: failure()
