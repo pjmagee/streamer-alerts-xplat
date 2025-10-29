@@ -467,24 +467,13 @@ class StreamerAlertsApp {
         const pkgRaw = fs.readFileSync(packageJsonPath, 'utf-8');
         const pkg = JSON.parse(pkgRaw);
         const deps: Record<string, string> = pkg.dependencies || {};
-        const devDeps: Record<string, string> = pkg.devDependencies || {};
-
-        const toList = (source: Record<string, string>, dev: boolean) => {
-          return Object.entries(source).map(([name, version]) => {
-            // Basic npm page link; could be enhanced later by reading individual package metadata
-            return {
-              name,
-              version,
-              dev,
-              homepage: `https://www.npmjs.com/package/${encodeURIComponent(name)}`
-            };
-          });
-        };
-
-        return [
-          ...toList(deps, false),
-          ...toList(devDeps, true)
-        ];
+        // Only include production/runtime dependencies per user request
+        return Object.entries(deps).map(([name, version]) => ({
+          name,
+          version,
+          dev: false,
+          homepage: `https://www.npmjs.com/package/${encodeURIComponent(name)}`
+        }));
       } catch (error) {
         logger.error('Failed to read dependencies list:', error);
         return [];

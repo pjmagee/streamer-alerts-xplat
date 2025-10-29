@@ -1453,23 +1453,19 @@ class StreamerAlertsRenderer {
         return;
       }
 
-      // Sort: prod first then dev, alphabetical within groups
-      deps.sort((a, b) => {
-        if (a.dev !== b.dev) return a.dev ? 1 : -1;
-        return a.name.localeCompare(b.name);
-      });
+      // Sort alphabetical only (production deps only now)
+      deps.sort((a, b) => a.name.localeCompare(b.name));
 
       const list = document.createElement('ul');
       list.className = 'dependency-list';
 
       deps.forEach(d => {
         const li = document.createElement('li');
-        li.className = d.dev ? 'dep-item dev-dep' : 'dep-item prod-dep';
+        li.className = 'dep-item';
         li.innerHTML = `
           <span class="dep-name">${d.name}</span>
           <span class="dep-version">${d.version}</span>
           <a href="${d.homepage}" class="dep-link" data-url="${d.homepage}" title="Open ${d.name} homepage">🔗</a>
-          ${d.dev ? '<span class="dep-tag">dev</span>' : ''}
         `;
         // Use existing openExternal IPC for link clicks
         const link = li.querySelector('.dep-link');

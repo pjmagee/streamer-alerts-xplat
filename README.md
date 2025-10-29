@@ -10,7 +10,6 @@ A desktop application for notifications when channels go live on YouTube, Twitch
 - 🔐 **OAuth Integration** - Secure authentication with platform APIs
 - 🔄 **Auto-Updates** - Automatic updates via GitHub releases
 - ⚙️ **Flexible Configuration** - Choose between API or scraping strategies per platform
-- ℹ️ **About Tab** - View application version, author, and full dependency list with links
 
 ## Technology
 
@@ -19,8 +18,6 @@ A desktop application for notifications when channels go live on YouTube, Twitch
 - [Vite](https://vitejs.dev/)
 - [Puppeteer](https://pptr.dev/)
 - [TypeScript](https://www.typescriptlang.org/)
-- [Winston](https://github.com/winstonjs/winston) for logging
-- [Electron Store](https://github.com/sindresorhus/electron-store) for persistent settings
 
 ## Auto-Updates
 
@@ -67,24 +64,6 @@ To publish a new version:
 3. GitHub Actions will automatically build and publish the release for all platforms
 4. Make sure the release is published (not draft) for auto-updates to work
 
-### About Tab & Version Display
-
-The application window title and About tab both show the current version (from `package.json`).
-
-About tab contents:
-
-- Application name & version
-- Author & repository link
-- License
-- Dynamic dependency list (prod & dev) with direct links to npm package pages
-
-Implementation details:
-
-- Main process exposes `app:getVersion` and `app:getDependencies` via IPC.
-- Preload adds `getAppVersion()` and `getAppDependencies()` on `window.electronAPI`.
-- Renderer lazily loads dependencies when the About tab is first activated.
-
-To update the version: use `npm run version:patch|minor|major` (standard npm version scripts). The About tab will reflect the change automatically on next run.
 
 ## Kick Authorization
 
