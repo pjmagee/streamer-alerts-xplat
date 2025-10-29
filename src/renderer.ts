@@ -1412,7 +1412,7 @@ class StreamerAlertsRenderer {
       activeTabContent.classList.add('active');
     }
 
-    // Lazy-load dependencies when About tab is first opened
+    // Lazy-load dependencies when About tab is first opened (simple list)
     if (tabName === 'about') {
       const depsContainer = document.getElementById('dependenciesList');
       if (depsContainer && depsContainer.getAttribute('data-loaded') !== 'true') {
@@ -1448,43 +1448,32 @@ class StreamerAlertsRenderer {
     try {
       const deps = await window.electronAPI.getAppDependencies();
       if (!deps || deps.length === 0) {
-        depsContainer.innerHTML = '<p>No dependencies found.</p>';
+        depsContainer.innerHTML = '<li>No dependencies found.</li>';
         depsContainer.setAttribute('data-loaded', 'true');
         return;
       }
 
-      // Sort alphabetical only (production deps only now)
       deps.sort((a, b) => a.name.localeCompare(b.name));
 
-      const list = document.createElement('ul');
-      list.className = 'dependency-list';
+      depsContainer.innerHTML = deps.map(d => {
+        const safeVersion = d.version || 'N/A';
+        const link = d.homepage ? `<a href="#" data-url="${d.homepage}" class="dep-link" title="Open ${d.name} homepage">${d.name}</a>` : d.name;
+        return `<li>${link} <span class="dep-version">${safeVersion}</span></li>`;
+      }).join('');
 
-      deps.forEach(d => {
-        const li = document.createElement('li');
-        li.className = 'dep-item';
-        li.innerHTML = `
-          <span class="dep-name">${d.name}</span>
-          <span class="dep-version">${d.version}</span>
-          <a href="${d.homepage}" class="dep-link" data-url="${d.homepage}" title="Open ${d.name} homepage">🔗</a>
-        `;
-        // Use existing openExternal IPC for link clicks
-        const link = li.querySelector('.dep-link');
-        link?.addEventListener('click', (e) => {
+      // Attach link handlers to open externally via IPC
+      depsContainer.querySelectorAll('.dep-link').forEach(link => {
+        link.addEventListener('click', (e) => {
           e.preventDefault();
           const url = (e.currentTarget as HTMLElement).getAttribute('data-url');
-          if (url) {
-            window.electronAPI.openExternal(url);
-          }
+          if (url) window.electronAPI.openExternal(url);
         });
-        list.appendChild(li);
       });
 
-      depsContainer.innerHTML = '';
-      depsContainer.appendChild(list);
       depsContainer.setAttribute('data-loaded', 'true');
     } catch (error) {
       logger.error('Failed to load dependencies:', error);
-      depsContainer.innerHTML = '<p class="error">Failed to load dependencies.</p>';
+      depsContainer.innerHTML = '<li class="error">Failed to load dependencies.</li>';
     }
   }
 

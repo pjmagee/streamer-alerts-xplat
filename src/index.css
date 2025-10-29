@@ -1316,6 +1316,183 @@ input:checked + .toggle-slider:before {
     line-height: 1.5;
 }
 
+/* About Tab Styling */
+.about-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.about-card {
+    background: #f8f9fa;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 18px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+}
+
+.about-card h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.05rem;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.app-info-list {
+    display: grid;
+    gap: 6px;
+}
+
+.app-info-list div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px dashed #e2e8f0;
+    padding-bottom: 4px;
+}
+
+.app-info-list div:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.app-info-list dt {
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #4a5568;
+}
+
+.app-info-list dd {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #2d3748;
+    font-weight: 500;
+}
+
+.deps-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dep-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.dep-search {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 13px;
+    min-width: 180px;
+}
+
+.dep-search:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+
+.dep-count {
+    font-size: 0.75rem;
+    background: #667eea;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.dependencies-list-wrapper {
+    max-height: 260px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.dependencies-list-wrapper:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.dep-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+.dep-table thead {
+    background: #f1f5f9;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.dep-table th, .dep-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.dep-table th {
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #4a5568;
+}
+
+.dep-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.dep-table a.dep-link {
+    text-decoration: none;
+    color: #667eea;
+    font-weight: 600;
+}
+
+.dep-table a.dep-link:hover {
+    text-decoration: underline;
+    color: #5a67d8;
+}
+
+.dep-table .loading {
+    text-align: center;
+    font-style: italic;
+    color: #718096;
+    padding: 14px 0;
+}
+
+@media (max-width: 620px) {
+    .deps-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .dep-controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .dep-search {
+        flex: 1;
+    }
+}
+
 .credentials-grid {
     display: grid;
     gap: 20px;
@@ -2003,6 +2180,48 @@ input:checked + .toggle-slider:before {
         transform: translateX(100%);
         opacity: 0;
     }
+}
+
+
+
+/* Simplified dependencies list (About tab) */
+.dependencies-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+.dependencies-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.dependencies-list li:last-child { border-bottom: none; }
+.dependencies-list li .dep-version {
+    color: #718096;
+    font-family: monospace;
+    font-size: 11px;
+}
+.dependencies-list li a.dep-link {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+.dependencies-list li a.dep-link:hover {
+    text-decoration: underline;
+}
+.dependencies-list li.loading {
+    text-align: center;
+    justify-content: center;
+    font-style: italic;
+    color: #718096;
 }
 
 
